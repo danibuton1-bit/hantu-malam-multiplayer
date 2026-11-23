@@ -80,6 +80,23 @@ class HorrorAudio {
     }
     this.noise(1, 2500, 0.8, 0.2);
   }
+  /** Kuntilanak: shrill high laugh "hihihi" then a long scream. */
+  kuntilanak() {
+    if (!this.ctx || !this.master) return;
+    const vol = getSound().kuyang; if (vol <= 0) return;
+    if (playSfx("kuntilanak", vol * 0.8, this.muted)) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 6; i++) {
+      const o = this.ctx.createOscillator(); o.type = "triangle"; const st = t + i * 0.16;
+      o.frequency.setValueAtTime(1500 - i * 40, st); o.frequency.exponentialRampToValueAtTime(1100 - i * 40, st + 0.12);
+      const g = this.ctx.createGain(); this.env(g, st, 0.01, 0.16 * vol, 0.13); o.connect(g).connect(this.master); o.start(st); o.stop(st + 0.15);
+    }
+    const s0 = t + 1; const o = this.ctx.createOscillator(); o.type = "sawtooth";
+    o.frequency.setValueAtTime(1200, s0); o.frequency.exponentialRampToValueAtTime(2300, s0 + 0.4); o.frequency.exponentialRampToValueAtTime(1500, s0 + 1.4);
+    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 7; const lg = this.ctx.createGain(); lg.gain.value = 90; lfo.connect(lg).connect(o.frequency);
+    const g = this.ctx.createGain(); this.env(g, s0, 0.03, 0.2 * vol, 1.4); o.connect(g).connect(this.master); o.start(s0); lfo.start(s0); o.stop(s0 + 1.5); lfo.stop(s0 + 1.5);
+    this.noise(1.2, 4000, 0.8, 0.12 * vol);
+  }
   /** Kuyang screech: shrill rising shriek + raspy cackle. */
   kuyang() {
     if (!this.ctx || !this.master) return;

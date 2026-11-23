@@ -4,7 +4,8 @@ import { Battery, Ghost, KeyRound, Megaphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { batterySvg, characterSvg, CHARACTERS, exclaimSvg, ghostSvg, keySvg, kuntilanakSvg, hoodieSvg, loadImg, pocongSvg, type CharId } from "@/lib/art";
 import { audio } from "@/lib/audio";
-import { BATTERIES, BOT_GHOST_ID, BOT_PATROL, CATCH_DIST, ROOMS, WALLS, WORLD, decideOutcome, EXIT, GAME_SECONDS, GHOST_SPAWN, HUNTER_SPAWNS, KEYS, move, npcsAt, roomAt, TOTAL_KEYS, applyMap, liftAt, liftExit, LIFTS, MAP_ID, MAPS, DOORS, doorOpen, setDoorOpen, nearestDoor, FLOOR2_H, FLOOR2_Y, type MapId } from "@/lib/game";
+import { newHaunt, stepHaunt, SPAWN_DIST } from "@/lib/haunt";
+import { BATTERIES, BOT_GHOST_ID, BOT_PATROL, CATCH_DIST, ROOMS, WALLS, WORLD, decideOutcome, EXIT, GAME_SECONDS, GHOST_SPAWN, HUNTER_SPAWNS, KEYS, move, roomAt, TOTAL_KEYS, applyMap, liftAt, liftExit, LIFTS, MAP_ID, MAPS, DOORS, doorOpen, setDoorOpen, nearestDoor, FLOOR2_H, FLOOR2_Y, type MapId } from "@/lib/game";
 import { CharImg, EmoteIcon, EmoteWheel } from "./Art";
 import { Bubble } from "./Social";
 import { Joystick } from "./Joystick";
@@ -55,8 +56,8 @@ export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLe
   const [chatText, setChatText] = useState("");
   const [chatLog, setChatLog] = useState<{ k: number; id: string; sender_nama: string; body: string }[]>([]);
   const all = useMemo<GamePlayer[]>(() => {
-    const ghost: GamePlayer[] = players.some((p) => p.role === "ghost") ? [] : [{ id: BOT_GHOST_ID, nama: "Hantu AI", username: "", karakter: "raka", role: "ghost", status: "alive" }];
-    return [...players, ...squadBots(players), ...ghost];
+    // no AI Kuyang player any more: the haunt cycle (one ghost at a time) replaces it
+    return [...players, ...squadBots(players)];
   }, [players]);
   const [emoteOpen, setEmoteOpen] = useState(false);
   const [scare, setScare] = useState(0);
@@ -177,6 +178,16 @@ export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLe
       if (ambush(meL)) { ghostAmbushCd = n + 25000; stunUntil = n + 700; audio.creak(); } else notify("Tidak ada pemburu di dekatmu.");
     };
     let scareCd = 0, lastGhostD = 9999;
+    const haunt = newHaunt(performance.now(), 15000);
+    const hauntPlace = (yaw: number) => {
+      for (const off of [0, 0.6, -0.6, 1.2, -1.2, Math.PI]) {
+        const a = yaw + off, x = meL.x + Math.sin(a) * SPAWN_DIST, y = meL.y + Math.cos(a) * SPAWN_DIST;
+        if (x < 20 || y < 20 || x > WORLD.w - 20 || y > WORLD.h - 20) continue;
+        if (MAP_ID === "hotel" && (y < 500) !== (meL.y < 500)) continue;
+        return { x, y };
+      }
+      return null;
+    };
     // AI ghost (simulated by the host when nobody plays the ghost)
     const bot = live[BOT_GHOST_ID];
     let botWp = 0, botDir = 0, botStuck = 0, botSend = 0, botAmbushAt = performance.now() + 25000, botFreeze = 0, botRecoilCd = 0;
@@ -360,16 +371,21 @@ export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLe
       if (mates.length && isHost && !countdown && !ended) runMates(now, dt);
       if (isHost && !countdown && !ended) botDoors(now);
       if (now - mapT > 120) { mapT = now; drawMap(); }
-      const npcs = npcsAt(t);
+      let npcs: { kind: string; x: number; y: number }[] = [];
+      if (!amGhost && meL.status === "alive" && !countdown && !ended && !liftS.riding) {
+        const hit = stepHaunt(haunt, now, dt, meL, hauntPlace);
+        if (hit) {
+          stunUntil = now + 1200; meL.battery = Math.max(0, meL.battery - 15);
+          if (hit === "kuntilanak") audio.kuntilanak(); else if (hit === "pocong") audio.scream(); else audio.kuyang();
+          sc.scare(t, hit); setScare(Math.random()); setTimeout(() => setScare(0), 1400);
+          notify(hit === "kuntilanak" ? "Kuntilanak menjerit di depanmu!" : hit === "pocong" ? "Pocong melompat ke wajahmu!" : "Kuyang menyambar dari kegelapan!");
+        }
+        if (haunt.active) npcs = [{ kind: ["kuyang", "kuntilanak", "pocong"][haunt.idx % 3]!, x: haunt.x, y: haunt.y }];
+      }
       if (!amGhost && meL.status === "alive" && !countdown && !ended) {
         meL.battery = Math.max(0, meL.battery - dt * 1.1);
         KEYS.forEach((key) => { if (!(keyMask & (1 << key.id)) && Math.hypot(key.x - meL.x, key.y - meL.y) < 34) gainKeys(1 << key.id, true); });
         BATTERIES.forEach((b) => { if (!(batMask & (1 << b.id)) && Math.hypot(b.x - meL.x, b.y - meL.y) < 34) { batMask |= 1 << b.id; meL.battery = Math.min(100, meL.battery + 60); audio.pickup(); notify("Baterai senter terisi!"); } });
-        if (now > npcCd) for (const n of npcs) if (Math.hypot(n.x - meL.x, n.y - meL.y) < 40) {
-          npcCd = now + 3000; stunUntil = now + 900; meL.battery = Math.max(0, meL.battery - 25); audio.scream();
-          notify(n.kind === "hoodie" ? "Hantu Hoodie tertawa dan menjeratmu dengan tentakel! Senter melemah." : n.kind === "pocong" ? "Pocong melompat ke arahmu! Senter melemah." : "Kuntilanak menjerit! Senter melemah.");
-          break;
-        }
         if (keyMask === 31 && Math.hypot(EXIT.x - meL.x, EXIT.y - meL.y) < EXIT.r) setStatus(me, "escaped");
       }
       if (amGhost && !countdown && !ended) {
@@ -378,10 +394,10 @@ export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLe
 
       // proximity fear
       const ghostId = all.find((p) => p.role === "ghost")?.id;
-      const gl = ghostId ? live[ghostId] : undefined;
+      const gl = ghostId ? live[ghostId] : haunt.active ? haunt : undefined;
       const near = !amGhost && gl && meL.status === "alive" ? Math.max(0, 1 - Math.hypot(gl.x - meL.x, gl.y - meL.y) / 360) : 0;
       audio.heartbeat(near); audio.setBreath(amGhost ? 0.25 : near);
-      if (!amGhost && gl && meL.status === "alive" && !countdown && !ended) {
+      if (!amGhost && ghostId && gl && meL.status === "alive" && !countdown && !ended) {
         const d = Math.hypot(gl.x - meL.x, gl.y - meL.y);
         const ang = Math.atan2(gl.x - meL.x, gl.y - meL.y) + Math.PI; const diff = Math.abs(((ang - meL.yaw) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
         if (d < 130 && (lastGhostD - d > 60 || diff < 0.7) && now > scareCd) { scareCd = now + 15000; stunUntil = now + 1500; audio.kuyang(); sc.scare(t); setScare(Math.random()); setTimeout(() => setScare(0), 1400); }

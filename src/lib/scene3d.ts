@@ -5,6 +5,7 @@ import { audio } from "./audio";
 import { CHARACTERS, isChar, type CharId } from "./art";
 import { buildAvatar, nameTag, type Avatar } from "./avatar3d";
 import { buildKuyang, type Kuyang } from "./kuyang3d";
+import { buildKuntilanak, buildPocong } from "./ghosts3d";
 import { getGfx, pixelRatioFor } from "./graphics";
 
 export const U = 1 / 50;
@@ -323,8 +324,9 @@ export function createScene(canvas: HTMLCanvasElement, opts: { me: CharId | "gho
   const dLight = new THREE.PointLight(0xff3040, 1.2, 3); dLight.position.y = -0.15; drone.add(ledR, ledG, dLight);
   let bobT = 0, vmX = 0;
   // 3D jumpscare: a full Kuyang lunges out of the dark straight at the camera, fangs first, with heavy shake
-  const scareKu = buildKuyang(false); scareKu.root.visible = false; camera.add(scareKu.root);
-  scareKu.root.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.Material | undefined; if (m) { (m as THREE.MeshStandardMaterial).fog = false; m.depthTest = false; } o.renderOrder = 20; });
+  const prepScare = (k: Kuyang) => { k.root.visible = false; camera.add(k.root); k.root.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.Material | undefined; if (m) { (m as THREE.MeshStandardMaterial).fog = false; m.depthTest = false; } o.renderOrder = 20; }); return k; };
+  const scareModels: Record<string, Kuyang> = { kuyang: prepScare(buildKuyang(false)), kuntilanak: prepScare(buildKuntilanak(false)), pocong: prepScare(buildPocong(false)) };
+  let scareKu = scareModels["kuyang"]!, scareOff = 0;
   const scareLight = new THREE.PointLight(0xff1020, 0, 4); scareLight.position.set(0, 0.2, -0.3); camera.add(scareLight);
   let scareAt = -1;
   const raycaster = new THREE.Raycaster(); raycaster.far = 3.2;
@@ -388,9 +390,9 @@ export function createScene(canvas: HTMLCanvasElement, opts: { me: CharId | "gho
         const k = Math.min(1, sa / 0.18), d = 2.4 - (2.4 - 0.95) * (1 - (1 - k) ** 3);
         scareKu.root.visible = true; scareKu.update({ t: st.t * 3, dt: st.dt, moving: true });
         scareKu.root.position.set(Math.sin(st.t * 40) * 0.02, -0.18 - (scareKu.root.position.y - scareKu.root.position.y), -d);
-        scareKu.root.position.y = 0.12 + Math.sin(st.t * 30) * 0.015; scareKu.root.rotation.set(0.1, 0, 0);
+        scareKu.root.position.y = 0.12 - scareOff + Math.sin(st.t * 30) * 0.015; scareKu.root.rotation.set(0.1, 0, 0);
         scareLight.intensity = 6 + Math.random() * 4;
-      } else { scareKu.root.visible = false; scareLight.intensity = 0; }
+      } else { for (const m of Object.values(scareModels)) m.root.visible = false; scareLight.intensity = 0; }
       const jolt = sa >= 0 && sa < 1.4 ? (1 - sa / 1.4) * 0.09 : 0;
       camera.rotation.set(st.pitch + shake + (Math.random() - 0.5) * jolt, st.yaw + (Math.random() - 0.5) * jolt, (Math.random() - 0.5) * jolt * 0.8);
       vm.visible = st.firstPerson;
@@ -408,10 +410,12 @@ export function createScene(canvas: HTMLCanvasElement, opts: { me: CharId | "gho
       gateMat.color.set(open ? 0x59e36b : 0x8b0d17); gateMat.emissive.set(open ? 0x59e36b : 0x8b0d17); gateLight.color.set(open ? 0x59e36b : 0x8b0d17);
       keys.forEach((k, i) => { const on = !(st.keyMask & (1 << i)); k.sprite.visible = on; k.light!.visible = on; k.sprite.position.y = (k.sprite.userData["b"] as number) + 0.6 + Math.sin(st.t * 3 + i) * 0.08; });
       bats.forEach((b, i) => { const on = !(st.batMask & (1 << i)); b.sprite.visible = on; b.light!.visible = on; });
+      for (const k of Object.values(npcKuyangs)) k.root.visible = false;
       st.npcs.forEach((n, i) => {
-        const key = `npc${i}`;
+        const key = `${n.kind}${i}`;
         let k = npcKuyangs[key];
-        if (!k) { k = npcKuyangs[key] = buildKuyang(true); scene.add(k.root); }
+        if (!k) { k = npcKuyangs[key] = n.kind === "kuntilanak" ? buildKuntilanak(true) : n.kind === "pocong" ? buildPocong(true) : buildKuyang(true); scene.add(k.root); }
+        k.root.visible = true;
         const nv3 = V(n.x, n.y);
         k.root.position.x = nv3.x; k.root.position.z = nv3.z;
         k.root.rotation.y = Math.atan2(cv.x - k.root.position.x, cv.z - k.root.position.z);
@@ -450,7 +454,7 @@ export function createScene(canvas: HTMLCanvasElement, opts: { me: CharId | "gho
       renderer.toneMappingExposure = on ? 1.6 : 1;
     },
     /** Start the 3D Kuyang jumpscare (t = game time from frame()). */
-    scare(t: number) { scareAt = t; },
+    scare(t: number, kind = "kuyang") { scareAt = t; scareKu = scareModels[kind] ?? scareModels["kuyang"]!; scareOff = kind === "kuyang" ? 0 : 1.55; scareLight.color.set(kind === "kuyang" ? 0xff1020 : 0xc8d0ff); },
     /** Tap/click picking: returns "door:<i>", "up" or "down" for the object under the screen point, within reach. */
     pick(clientX: number, clientY: number): string | null {
       const r = canvas.getBoundingClientRect();

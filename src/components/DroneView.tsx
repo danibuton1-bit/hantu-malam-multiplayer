@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowUp, Clapperboard, Crosshair, Eye, EyeOff, Film, Orbit, RotateCcw, RotateCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { batterySvg, characterSvg, CHARACTERS, exclaimSvg, ghostSvg, keySvg, kuntilanakSvg, hoodieSvg, loadImg, normalizeChar, pocongSvg, type CharId } from "@/lib/art";
-import { applyMap, BOT_GHOST_ID, GHOST_SPAWN, isMapId, npcsAt, WORLD, type MapId } from "@/lib/game";
+import { applyMap, BOT_GHOST_ID, GHOST_SPAWN, isMapId, WORLD, type MapId } from "@/lib/game";
 import { createScene } from "@/lib/scene3d";
 import { toContent } from "@/lib/orient";
 import { Joystick } from "./Joystick";
@@ -54,7 +54,6 @@ export function DroneView({ code, onExit }: { code: string; onExit: () => void }
       const m = isMapId(rm?.map) ? rm.map : "rumah"; applyMap(m); setMap(m);
       const ps: P[] = (data ?? []).map((p) => ({ id: p.profile_id, nama: p.nama, karakter: normalizeChar(p.karakter) ?? "raka", role: p.role }));
       ps.push(...squadBots(ps).map((b) => ({ id: b.id, nama: b.nama, karakter: b.karakter, role: "hunter" })));
-      if (!ps.some((p) => p.role === "ghost")) ps.push({ id: BOT_GHOST_ID, nama: "Hantu AI", karakter: "raka", role: "ghost" });
       setHud((h) => ({ ...h, startedAt: gs?.started_at ? new Date(gs.started_at).getTime() : Date.now() }));
       setPlayers(ps);
     })();
@@ -154,7 +153,7 @@ export function DroneView({ code, onExit }: { code: string; onExit: () => void }
       } else { cam.yaw = damp(cam.yaw, d.yaw, DRONE.ROT_DAMP, dt); cam.pitch = damp(cam.pitch, d.pitch, DRONE.ROT_DAMP, dt); }
       const t = (now - t0) / 1000;
       const el = Math.max(0, (Date.now() - hud.startedAt) / 1000);
-      sc.frame({ dt, t, cam, camH: cam.h, yaw: cam.yaw, pitch: cam.pitch, moving: false, battery: 100, near: 0, keyMask, batMask, npcs: npcsAt(el), firstPerson: false,
+      sc.frame({ dt, t, cam, camH: cam.h, yaw: cam.yaw, pitch: cam.pitch, moving: false, battery: 100, near: 0, keyMask, batMask, npcs: [], firstPerson: false,
         others: players.map((p) => { const l = live[p.id]!; return { id: p.id, x: l.x, y: l.y, yaw: l.yaw, ghost: p.role === "ghost", shouting: false, visible: l.alive, moving: l.moving, pitch: 0, emote: now < l.emoteUntil ? l.emote : null }; }) });
       if (now - lastSend > 100) { lastSend = now; void ch.send({ type: "broadcast", event: "drone", payload: { x: Math.round(cam.x), y: Math.round(cam.y), h: Math.round(cam.h * 100) / 100, yaw: Math.round(cam.yaw * 100) / 100 } }); }
       if (now - hudT > 250) { hudT = now; setHud((s) => ({ ...s, h: cam.h })); }
