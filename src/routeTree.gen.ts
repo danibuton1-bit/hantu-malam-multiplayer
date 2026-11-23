@@ -10,33 +10,115 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as DaftarRouteImport } from './routes/daftar'
+import { Route as FpstestRouteImport } from './routes/fpstest'
+import { Route as HomeRouteImport } from './routes/home'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as DroneCodeRouteImport } from './routes/drone.$code'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DaftarRoute = DaftarRouteImport.update({
+  id: '/daftar',
+  path: '/daftar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FpstestRoute = FpstestRouteImport.update({
+  id: '/fpstest',
+  path: '/fpstest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DroneCodeRoute = DroneCodeRouteImport.update({
+  id: '/drone/$code',
+  path: '/drone/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/daftar': typeof DaftarRoute
+  '/fpstest': typeof FpstestRoute
+  '/home': typeof HomeRoute
+  '/login': typeof LoginRoute
+  '/drone/$code': typeof DroneCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/daftar': typeof DaftarRoute
+  '/fpstest': typeof FpstestRoute
+  '/home': typeof HomeRoute
+  '/login': typeof LoginRoute
+  '/drone/$code': typeof DroneCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/daftar': typeof DaftarRoute
+  '/fpstest': typeof FpstestRoute
+  '/home': typeof HomeRoute
+  '/login': typeof LoginRoute
+  '/drone/$code': typeof DroneCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/daftar'
+    | '/fpstest'
+    | '/home'
+    | '/login'
+    | '/drone/$code'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/admin'
+    | '/daftar'
+    | '/fpstest'
+    | '/home'
+    | '/login'
+    | '/drone/$code'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/daftar'
+    | '/fpstest'
+    | '/home'
+    | '/login'
+    | '/drone/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  DaftarRoute: typeof DaftarRoute
+  FpstestRoute: typeof FpstestRoute
+  HomeRoute: typeof HomeRoute
+  LoginRoute: typeof LoginRoute
+  DroneCodeRoute: typeof DroneCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +130,59 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/daftar': {
+      id: '/daftar'
+      path: '/daftar'
+      fullPath: '/daftar'
+      preLoaderRoute: typeof DaftarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fpstest': {
+      id: '/fpstest'
+      path: '/fpstest'
+      fullPath: '/fpstest'
+      preLoaderRoute: typeof FpstestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/drone/$code': {
+      id: '/drone/$code'
+      path: '/drone/$code'
+      fullPath: '/drone/$code'
+      preLoaderRoute: typeof DroneCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  DaftarRoute: DaftarRoute,
+  FpstestRoute: FpstestRoute,
+  HomeRoute: HomeRoute,
+  LoginRoute: LoginRoute,
+  DroneCodeRoute: DroneCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1795422877396,
+      "tag": "0000_hantu_malam_game",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795422896285,
+      "tag": "0001_squad_lobby_and_media",
+      "breakpoints": true
+    }
+  ]
+}
