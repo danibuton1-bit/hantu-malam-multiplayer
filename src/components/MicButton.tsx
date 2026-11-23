@@ -3,6 +3,7 @@ import { Mic, MicOff } from "lucide-react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { meter } from "@/lib/voice";
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 const MIC_OK = "hm-mic-ok";
@@ -18,12 +19,13 @@ export function MicButton({ code, me, className = "" }: { code: string; me: stri
   const [on, setOn] = useState(false);
   const [ask, setAsk] = useState(false);
   const [err, setErr] = useState("");
-  const st = useRef<{ ch?: RealtimeChannel; stream?: MediaStream; peers: Record<string, RTCPeerConnection>; audios: Record<string, HTMLAudioElement> }>({ peers: {}, audios: {} });
+  const st = useRef<{ ch?: RealtimeChannel; stream?: MediaStream; peers: Record<string, RTCPeerConnection>; audios: Record<string, HTMLAudioElement>; meters?: Record<string, { stop: () => void }> }>({ peers: {}, audios: {} });
 
   const stop = () => {
     const s = st.current;
     s.ch?.send({ type: "broadcast", event: "sig", payload: { from: me, kind: "bye" } satisfies Sig });
     Object.values(s.peers).forEach((p) => p.close()); Object.values(s.audios).forEach((a) => a.remove());
+    Object.values(s.meters ?? {}).forEach((m) => m.stop());
     s.stream?.getTracks().forEach((t) => t.stop());
     if (s.ch) void supabase.removeChannel(s.ch);
     st.current = { peers: {}, audios: {} }; setOn(false);
@@ -36,7 +38,7 @@ export function MicButton({ code, me, className = "" }: { code: string; me: stri
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
     catch { try { localStorage.removeItem(MIC_OK); } catch { /* ignore */ } setErr("Mic diblokir. Buka pengaturan situs di browser, ubah Mikrofon ke \"Izinkan\", lalu coba lagi."); return; }
     try { localStorage.setItem(MIC_OK, "1"); } catch { /* ignore */ }
-    const s = st.current; s.stream = stream;
+    const s = st.current; s.stream = stream; s.meters = { [me]: meter(me, stream) };
     const ch = supabase.channel(`voice-${code}`, { config: { broadcast: { self: false } } }); s.ch = ch;
     const send = (p: Sig) => ch.send({ type: "broadcast", event: "sig", payload: p });
     const peer = (id: string) => {
@@ -44,12 +46,12 @@ export function MicButton({ code, me, className = "" }: { code: string; me: stri
       const pc = new RTCPeerConnection({ iceServers: ICE });
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
       pc.onicecandidate = (e) => { if (e.candidate) void send({ from: me, to: id, kind: "ice", data: e.candidate.toJSON() }); };
-      pc.ontrack = (e) => { let a = s.audios[id]; if (!a) { a = document.createElement("audio"); a.autoplay = true; document.body.appendChild(a); s.audios[id] = a; } a.srcObject = e.streams[0] ?? null; void a.play().catch(() => {}); };
+      pc.ontrack = (e) => { let a = s.audios[id]; if (!a) { a = document.createElement("audio"); a.autoplay = true; document.body.appendChild(a); s.audios[id] = a; } a.srcObject = e.streams[0] ?? null; void a.play().catch(() => {}); const rs = e.streams[0]; if (rs) { s.meters?.[id]?.stop(); (s.meters ??= {})[id] = meter(id, rs); } };
       s.peers[id] = pc; return pc;
     };
     ch.on("broadcast", { event: "sig" }, async ({ payload }) => {
       const m = payload as Sig; if (m.from === me || (m.to && m.to !== me)) return;
-      if (m.kind === "bye") { s.peers[m.from]?.close(); delete s.peers[m.from]; s.audios[m.from]?.remove(); delete s.audios[m.from]; return; }
+      if (m.kind === "bye") { s.peers[m.from]?.close(); delete s.peers[m.from]; s.audios[m.from]?.remove(); delete s.audios[m.from]; s.meters?.[m.from]?.stop(); return; }
       if (m.kind === "hello") { if (me < m.from) { const pc = peer(m.from); const o = await pc.createOffer(); await pc.setLocalDescription(o); void send({ from: me, to: m.from, kind: "offer", data: o }); } else void send({ from: me, to: m.from, kind: "hello" }); return; }
       const pc = peer(m.from);
       if (m.kind === "offer") { await pc.setRemoteDescription(m.data as RTCSessionDescriptionInit); const a = await pc.createAnswer(); await pc.setLocalDescription(a); void send({ from: me, to: m.from, kind: "answer", data: a }); }

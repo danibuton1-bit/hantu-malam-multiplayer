@@ -7,6 +7,8 @@ import { SocialPanel } from "@/components/Social";
 import { useApp } from "@/components/AppState";
 import { Game, type GamePlayer } from "@/components/Game";
 import { MicButton } from "@/components/MicButton";
+import { PropHunt } from "@/components/PropHunt";
+import { PETAK } from "@/lib/prophunt";
 import { MuteButton } from "@/components/MuteButton";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ProfileCorner } from "@/components/ProfileCorner";
@@ -230,7 +232,7 @@ function Lobby() {
     lastLeft.current = counting ? left : null;
   }, [counting, left]);
 
-  async function setMap(m: MapId) {
+  async function setMap(m: MapId | typeof PETAK) {
     if (!code) return;
     setRoomRow((r) => (r ? { ...r, map: m } : r));
     await supabase.from("rooms").update({ map: m }).eq("code", code);
@@ -253,6 +255,9 @@ function Lobby() {
   }
 
   if (!account) return null;
+  if (playing && room && code && room.map === PETAK) {
+    return <PropHunt code={code} me={account.id} players={players} startedAt={startedAt} isHost={isHost} onBackToLobby={backToLobby} onLeave={leaveSquad} />;
+  }
   if (playing && room && code) {
     return <Game code={code} me={account.id} players={players} startedAt={startedAt} isHost={isHost} onBackToLobby={backToLobby} onLeave={leaveSquad} map={isMapId(room.map) ? room.map : "rumah"} />;
   }
@@ -321,6 +326,7 @@ function Lobby() {
           <div className="mb-1 text-center text-[10px] font-bold text-gold">MODE / MAP {isHost ? "" : "(dipilih kapten)"}</div>
           <div className="grid grid-cols-2 gap-1">
             {MAPS.map((m) => <button key={m.id} disabled={!isHost || counting} onClick={() => void setMap(m.id)} className={`truncate rounded border px-1.5 py-1 text-left text-[10px] font-bold ${room?.map === m.id ? "border-primary bg-primary/25" : "border-border bg-background/40"}`}>{m.nama}</button>)}
+            <button disabled={!isHost || counting} onClick={() => void setMap(PETAK)} className={`col-span-2 truncate rounded border px-1.5 py-1 text-[10px] font-bold ${room?.map === PETAK ? "border-gold bg-gold/25 text-gold" : "border-border bg-background/40"}`}>MODE PETAK UMPET</button>
           </div>
         </div>
         {err && <p className="text-[10px] text-destructive">{err}</p>}
@@ -340,7 +346,7 @@ function Lobby() {
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-void/60">
           <div className="text-sm font-bold tracking-widest text-gold">PERTANDINGAN DIMULAI DALAM</div>
           <div key={left} className="font-horror text-8xl text-primary animate-in zoom-in-50 fade-in duration-300">{left}</div>
-          <div className="text-xs text-muted-foreground">Map: {MAPS.find((m) => m.id === room?.map)?.nama}</div>
+          <div className="text-xs text-muted-foreground">{room?.map === PETAK ? "Mode: Petak Umpet" : `Map: ${MAPS.find((m) => m.id === room?.map)?.nama}`}</div>
           <Button variant="secondary" size="lg" className="font-horror text-xl" onClick={() => void cancelCountdown()}><X className="size-5" /> BATALKAN</Button>
         </div>
       )}

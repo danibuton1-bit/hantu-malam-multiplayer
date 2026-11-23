@@ -39,6 +39,12 @@ class HorrorAudio {
     const g = this.ctx.createGain(); this.env(g, t, 0.005, peak, dur);
     s.connect(f).connect(g).connect(this.master); s.start(t, Math.random()); s.stop(t + dur + 0.1);
   }
+  /** Desert Eagle: sharp crack + deep boom + room echo. */
+  gunshot(dist = 0) {
+    const v = Math.max(0.15, 1 - dist / 900);
+    this.noise(0.08, 2600, 0.7, 0.9 * v); this.noise(0.35, 220, 0.8, 0.8 * v, "lowpass"); this.tone(70, 0.3, "sine", 0.5 * v);
+    setTimeout(() => this.noise(0.5, 600, 0.5, 0.18 * v, "lowpass"), 140);
+  }
   step() { this.noise(0.09, 180 + Math.random() * 80, 1.2, 0.35, "lowpass"); }
   pickup() { this.tone(880, 0.15, "triangle", 0.25); setTimeout(() => this.tone(1320, 0.25, "triangle", 0.2), 90); }
   creak() {
