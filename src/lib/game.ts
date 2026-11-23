@@ -85,8 +85,9 @@ export function applyMap(id: MapId) {
   MAP_ID = id;
   const m = MAPS.find((x) => x.id === id)!;
   ROOMS = BASE_ROOMS.map((r, i) => ({ ...r, name: m.names[i]! }));
-  DOORS = id === "hotel" ? BASE_DOORS.filter((d) => d.v) : BASE_DOORS;
-  WALLS = [...OUTER_INNER, ...(id === "hotel" ? MID_SOLID : MID_DOORS), ...FURNITURE];
+  DOORS = id === "kuburan" ? [] : id === "hotel" ? BASE_DOORS.filter((d) => d.v) : BASE_DOORS;
+  // kuburan is an open-air graveyard: only the outer fence, no rooms or doors
+  WALLS = id === "kuburan" ? OUTER_INNER.slice(0, 4) : [...OUTER_INNER, ...(id === "hotel" ? MID_SOLID : MID_DOORS), ...FURNITURE];
   doorOpen = DOORS.map(() => false);
 }
 /** Doors start closed and only open when a player clicks them; closed doors block movement. */

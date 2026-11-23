@@ -235,9 +235,20 @@ export function createScene(canvas: HTMLCanvasElement, opts: { me: CharId | "gho
   const theme = buildTheme(scene, MAP);
   // graves
   const graveMat = Mat({ color: 0x5a5d58, roughness: 1 });
-  for (const [gx, gy] of (MAP === "kuburan" ? [[1060, 600], [1260, 640], [1380, 880], [1080, 900], [120, 300], [380, 120], [640, 330], [880, 160], [1320, 420], [220, 820], [600, 860], [900, 640]] : MAP === "rumah" ? [[1060, 600], [1260, 640], [1380, 880], [1080, 900]] : []) as [number, number][]) {
-    const g = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 0.2), graveMat); g.position.set((gx + 17) * U, 0.55, (gy + 22) * U); g.rotation.z = 0.08; scene.add(g);
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.2, 16, 1, false, 0, Math.PI), graveMat); top.rotation.set(Math.PI / 2, 0, Math.PI / 2); top.position.set((gx + 17) * U, 1.1, (gy + 22) * U); scene.add(top);
+  const moundMat = Mat({ color: 0x3b2f22, roughness: 1 });
+  const edgeMat = Mat({ color: 0x8c8a80, roughness: 0.95 });
+  const graveList: [number, number][] = MAP === "kuburan"
+    ? Array.from({ length: 9 }, (_, i) => Array.from({ length: 5 }, (_, j) => [140 + i * 150 + (j % 2) * 40, 120 + j * 190] as [number, number])).flat().filter(([x, y]) => Math.hypot(x - EXIT.x, y - EXIT.y) > 120)
+    : MAP === "rumah" ? [[1060, 600], [1260, 640], [1380, 880], [1080, 900]] : [];
+  // Islamic-style graves: earth mound with stone edging and two rounded nisan (head + foot), no crosses
+  for (const [gx, gy] of graveList) {
+    const cx = (gx + 17) * U, cz = (gy + 22) * U;
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.18, 1.9), edgeMat); edge.position.set(cx, 0.09, cz); scene.add(edge);
+    const mound = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.22, 1.75), moundMat); mound.position.set(cx, 0.24, cz); scene.add(mound);
+    for (const [dz, h] of [[-0.85, 0.75], [0.85, 0.55]] as const) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.22, h, 0.12), graveMat); post.position.set(cx, h / 2 + 0.15, cz + dz); scene.add(post);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), graveMat); cap.scale.set(1, 1.3, 0.55); cap.position.set(cx, h + 0.15, cz + dz); scene.add(cap);
+    }
   }
   // exit gate
   const gateMat = Mat({ color: 0x8b0d17, emissive: 0x8b0d17, emissiveIntensity: 0.6 });

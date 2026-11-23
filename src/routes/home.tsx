@@ -170,6 +170,7 @@ function Lobby() {
   // lobby background media (admin uploads), rotating every 25s
   const [bgs, setBgs] = useState<MediaItem[]>([]);
   const [bgIdx, setBgIdx] = useState(0);
+  const [bgErr, setBgErr] = useState<Record<string, boolean>>({});
   useEffect(() => { const f = () => setBgs(getMedia().filter((m) => m.kind === "lobby_bg")); f(); return onMedia(f); }, []);
   useEffect(() => { if (bgs.length < 2) return; const t = setInterval(() => setBgIdx((i) => i + 1), 25000); return () => clearInterval(t); }, [bgs.length]);
   const bg = bgs.length ? bgs[bgIdx % bgs.length] : null;
@@ -264,10 +265,18 @@ function Lobby() {
 
   return (
     <main className="relative h-full min-h-full overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 70%, hsl(350 70% 18% / .7), transparent 60%), var(--background)" }}>
-      {bg && (bg.media_type === "video"
-        ? <video key={bg.id} src={bg.src} autoPlay muted loop playsInline preload="auto" className="absolute inset-0 h-full w-full object-cover" />
-        : <img key={bg.id} src={bg.src} alt="" className="absolute inset-0 h-full w-full object-cover" />)}
-      {bg && <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-background/50" />}
+      {/* cinema screen behind the squad (no seats) */}
+      <div className="pointer-events-none absolute inset-x-[8%] top-[6%] h-[58%]">
+        <div className="absolute -inset-6 rounded-[40%] bg-primary/20 blur-3xl" />
+        <div className="relative h-full w-full overflow-hidden rounded-md border-[6px] border-card bg-void shadow-2xl" style={{ perspective: "800px" }}>
+          {bg && !bgErr[bg.id] ? (bg.media_type === "video"
+            ? <video key={bg.id} src={bg.src} autoPlay muted loop playsInline preload="auto" onError={() => setBgErr((e) => ({ ...e, [bg.id]: true }))} className="h-full w-full object-cover" />
+            : <img key={bg.id} src={bg.src} alt="" onError={() => setBgErr((e) => ({ ...e, [bg.id]: true }))} className="h-full w-full object-cover" />)
+            : <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-card to-void text-2xl font-black tracking-[0.3em] text-muted-foreground/60">HANTU MALAM</div>}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-void/70" />
+        </div>
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-void via-void/80 to-transparent" />
 
       <header className="absolute inset-x-0 top-0 z-30 flex items-start gap-2 p-2">
         <div className="w-52"><ProfileCorner /></div>
