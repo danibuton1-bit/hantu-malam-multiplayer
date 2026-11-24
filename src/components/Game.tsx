@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { batterySvg, characterSvg, CHARACTERS, exclaimSvg, ghostSvg, keySvg, kuntilanakSvg, hoodieSvg, loadImg, pocongSvg, type CharId } from "@/lib/art";
 import { audio } from "@/lib/audio";
 import { newHaunt, stepHaunt, SPAWN_DIST } from "@/lib/haunt";
-import { BATTERIES, BOT_GHOST_ID, BOT_PATROL, CATCH_DIST, ROOMS, WALLS, WORLD, decideOutcome, EXIT, GAME_SECONDS, GHOST_SPAWN, HUNTER_SPAWNS, KEYS, move, roomAt, TOTAL_KEYS, applyMap, liftAt, liftExit, LIFTS, MAP_ID, MAPS, DOORS, doorOpen, setDoorOpen, nearestDoor, FLOOR2_H, FLOOR2_Y, type MapId } from "@/lib/game";
+import { BATTERIES, BOT_GHOST_ID, BOT_PATROL, CATCH_DIST, ROOMS, WALLS, WORLD, decideOutcome, EXIT, GAME_SECONDS, GHOST_SPAWN, HUNTER_SPAWNS, KEYS, move, roomAt, TOTAL_KEYS, applyMap, liftAt, liftArrive, liftExit, LIFTS, MAP_ID, MAPS, DOORS, doorOpen, setDoorOpen, nearestDoor, FLOOR2_H, FLOOR2_Y, type MapId } from "@/lib/game";
 import { CharImg, EmoteIcon, EmoteWheel } from "./Art";
 import { Bubble } from "./Social";
 import { Joystick } from "./Joystick";
@@ -34,7 +34,8 @@ export function squadBots(players: { karakter: string }[], bots = true): GamePla
 export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLeave, map = "rumah", bots = false }: {
   code: string; me: string; players: GamePlayer[]; startedAt: number; isHost: boolean; onBackToLobby: () => void; onLeave: () => void; map?: MapId; bots?: boolean;
 }) {
-  applyMap(map);
+  // only when the match/map starts — calling it on every render used to slam every open door shut
+  useMemo(() => applyMap(map), [map]);
   const [onLift, setOnLift] = useState(false);
   const [riding, setRiding] = useState(false);
   const liftRef = useRef<(dir?: "up" | "down") => void>(() => {});
@@ -134,7 +135,13 @@ export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLe
     let droneAt = 0; const droneSt = { x: 0, y: 0, h: 0, yaw: 0 };
     ch.on("broadcast", { event: "drone" }, ({ payload }) => { Object.assign(droneSt, payload as typeof droneSt); droneAt = performance.now(); });
     ch.on("broadcast", { event: "door" }, ({ payload }) => { const p = payload as { i: number; o: boolean }; setDoorOpen(p.i, !!p.o); });
-    ch.on("broadcast", { event: "lift" }, ({ payload }) => { const p = payload as { to: 1 | 2 }; if (!liftS.moving) startLift(p.to, false, false); });
+    ch.on("broadcast", { event: "lift" }, ({ payload }) => {
+      // someone else pressed the button: if I'm standing in the cabin I ride along with them
+      const p = payload as { to: 1 | 2 }; if (liftS.moving) return;
+      const here = liftAt(meL.x, meL.y);
+      const ride = !!here && meL.status === "alive" && here.floor === liftS.f && liftS.f !== p.to;
+      startLift(p.to, ride, false);
+    });
     ch.on("broadcast", { event: "caught" }, ({ payload }) => setStatus((payload as { id: string }).id, "caught"));
     ch.on("broadcast", { event: "shout" }, ({ payload }) => { const l = live[(payload as { id: string }).id]; if (l) { l.shoutUntil = performance.now() + 2500; audio.shout(); } });
     const showEmote = (id: string, e: string, t?: string) => {
@@ -291,7 +298,7 @@ export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLe
     // ---- hotel lift: one physical cabin riding a vertical shaft between floor 1 (0 m) and floor 2 (FLOOR2_H)
     const floorOf = (y: number) => (y >= FLOOR2_Y ? 2 : 1) as 1 | 2;
     const liftS = { f: 1 as 1 | 2, to: 1 as 1 | 2, y: 0, from: 0, t0: 0, moving: false, riding: false, doors: [0, 0] };
-    const LIFT_MS = 2600, DOOR_CLOSE_MS = 900;
+    const LIFT_MS = 2600, DOOR_CLOSE_MS = 900; let liftCallAt = 0;
     function startLift(to: 1 | 2, riding: boolean, broadcast = true) {
       if (liftS.moving || (liftS.f === to && !riding)) return;
       liftS.moving = true; liftS.riding = riding; liftS.to = to; liftS.from = liftS.y; liftS.t0 = performance.now() + DOOR_CLOSE_MS;
@@ -300,7 +307,7 @@ export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLe
     }
     liftRef.current = (dir?: "up" | "down") => {
       const l = liftAt(meL.x, meL.y); if (!l || liftS.moving || meL.status !== "alive") return;
-      if (liftS.f !== l.floor) { notify("Tunggu lift datang..."); return; }
+      if (liftS.f !== l.floor) { startLift(l.floor as 1 | 2, false); notify("Memanggil lift..."); return; }
       const to = (l.floor === 1 ? 2 : 1) as 1 | 2;
       if (dir && (dir === "up") !== (to === 2)) { notify(`Kamu sudah di Lantai ${l.floor}`); return; }
       startLift(to, true);
@@ -312,12 +319,14 @@ export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLe
         liftS.y = liftS.from + ((liftS.to === 2 ? FLOOR2_H : 0) - liftS.from) * e;
         if (k >= 1) {
           liftS.moving = false; liftS.f = liftS.to;
-          if (liftS.riding) { const o = LIFTS[liftS.to - 1]!; meL.x = meL.tx = o.x; meL.y = meL.ty = o.y; liftS.riding = false; setRiding(false); audio.pickup(); notify(`Ding! Lantai ${liftS.to}`); }
+          if (liftS.riding) { const fr = LIFTS[liftS.to === 2 ? 0 : 1]!, o = LIFTS[liftS.to - 1]!; const a = liftArrive(fr, o, meL.x, meL.y); meL.x = meL.tx = a.x; meL.y = meL.ty = a.y; liftS.riding = false; setRiding(false); audio.pickup(); notify(`Ding! Lantai ${liftS.to}`); }
         }
       } else if (meL.status === "alive") {
         // call the cabin when you walk up to the landing on another floor
+        // only when standing right at the landing door for a moment (walking past no longer steals the lift)
         const mf = floorOf(meL.y), pad = LIFTS[mf - 1]!;
-        if (liftS.f !== mf && Math.hypot(pad.x - meL.x, pad.y - meL.y) < 150) startLift(mf, false);
+        if (liftS.f !== mf && Math.hypot(pad.x - meL.x, pad.y - meL.y) < 95) { if (!liftCallAt) liftCallAt = now; else if (now - liftCallAt > 900) { liftCallAt = 0; startLift(mf, false); notify("Memanggil lift..."); } }
+        else liftCallAt = 0;
       }
       LIFTS.forEach((pad, i) => {
         const here = !liftS.moving && !liftS.riding && liftS.f === i + 1 && Math.hypot(pad.x - meL.x, pad.y - meL.y) < 160;

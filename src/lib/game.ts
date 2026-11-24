@@ -102,8 +102,15 @@ export function nearestDoor(x: number, y: number, max = 90) {
   return best;
 }
 const blocked = (x: number, y: number, r: number) => WALLS.some((w) => circleHitsRect(x, y, r, w)) || DOORS.some((d, i) => !doorOpen[i] && circleHitsRect(x, y, r, doorRect(d)));
+/** The whole cabin floor (about 90 x 85 px) counts as "in the lift", so several players fit side by side. */
+export const LIFT_HALF = { w: 46, d: 44 };
 export function liftAt(x: number, y: number) {
-  return MAP_ID === "hotel" ? LIFTS.find((l) => Math.hypot(l.x - x, l.y - y) < LIFT_R) ?? null : null;
+  return MAP_ID === "hotel" ? LIFTS.find((l) => Math.abs(l.x - x) <= LIFT_HALF.w && Math.abs(l.y - y) <= LIFT_HALF.d) ?? null : null;
+}
+/** Where a rider ends up on the other floor: same spot inside the cabin, so riders don't stack on one point. */
+export function liftArrive(from: { x: number; y: number }, to: { x: number; y: number }, x: number, y: number) {
+  const dx = Math.max(-LIFT_HALF.w + 8, Math.min(LIFT_HALF.w - 8, x - from.x)), dy = Math.max(-LIFT_HALF.d + 8, Math.min(LIFT_HALF.d - 8, y - from.y));
+  return { x: to.x + dx, y: to.y + dy };
 }
 
 export const KEYS = [

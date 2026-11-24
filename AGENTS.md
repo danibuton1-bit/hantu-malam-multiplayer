@@ -44,3 +44,5 @@ use the editor.
 - No 2D Kuyang images anywhere: menus/lobby use `Stage3D`, the jumpscare is the 3D model attached to the camera (`scene.scare`). Why: user wants all ghosts as real 3D.
 - There is no room page: `/home` is the squad lobby (remembered in localStorage via `squad-store`), and the match renders inside it; start = captain sets `rooms.countdown_until`, anyone can clear it, captain launches at zero. Why: user wants a Free Fire-style single lobby.
 - Admin media lives in the private `game-media` bucket + `media_assets`; uploads go through admin-checked server functions (signed upload URLs), and `BootGate` downloads every file into Cache Storage before any page shows. Why: no Cloud Auth, and lobby video must play from local storage without lag.
+- Call `applyMap()` only once per match (inside `useMemo`), never in a component body: it resets `doorOpen`. Why: re-renders were closing open doors.
+- Hotel lift: everyone standing inside the cabin (`liftAt` = whole cabin rect) rides when any client broadcasts `lift`; riders keep their cabin offset via `liftArrive`. Why: friends were left behind in multiplayer.

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { applyMap, DOORS, liftAt, liftExit, MAPS, move, nearestDoor, ROOMS, setDoorOpen } from "./game";
+import { applyMap, DOORS, liftArrive, liftAt, liftExit, MAPS, move, nearestDoor, ROOMS, setDoorOpen } from "./game";
 
 afterEach(() => applyMap("rumah"));
 describe("maps", () => {
@@ -29,5 +29,17 @@ describe("doors", () => {
   it("close again after a map reset", () => {
     applyMap("rumah"); const i = nearestDoor(500, 250); setDoorOpen(i, true);
     applyMap("rumah"); expect(move(470, 250, 60, 0).x).toBeLessThan(500);
+  });
+});
+describe("hotel lift with several players", () => {
+  it("the whole cabin floor counts, so a friend standing in the corner is in the lift too", () => {
+    applyMap("hotel");
+    expect(liftAt(750 + 40, 410 + 38)?.floor).toBe(1);
+    expect(liftAt(750 - 40, 910 - 38)?.floor).toBe(2);
+    expect(liftAt(750, 410 + 70)).toBeNull();
+  });
+  it("riders keep their own spot in the cabin when they arrive on the other floor", () => {
+    expect(liftArrive({ x: 750, y: 410 }, { x: 750, y: 910 }, 730, 420)).toEqual({ x: 730, y: 920 });
+    expect(liftArrive({ x: 750, y: 410 }, { x: 750, y: 910 }, 770, 400)).toEqual({ x: 770, y: 900 });
   });
 });

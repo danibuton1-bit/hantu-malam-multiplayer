@@ -29,3 +29,4 @@
 - [ ] Hotel: real 2-floor building, big lift with ↑↓ wall buttons, click-to-open doors, no wall clipping
 - [x] Auto-remove offline players from rooms (stale "Qila" bug)
 - [x] Hantu Hoodie 3D flying
+- [x] Doors stay open (map no longer resets every frame), lift carries every player in the cabin
