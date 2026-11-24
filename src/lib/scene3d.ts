@@ -264,8 +264,10 @@ export function createScene(canvas: HTMLCanvasElement, opts: { me: CharId | "gho
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(k), transparent: true, alphaTest: 0.1 }));
     s.scale.set(w, h, 1); scene.add(s); return s;
   };
-  const keys = KEYS.map((k) => { const s = sprite("key", 0.6, 0.3); const v = V(k.x, k.y); s.position.set(v.x, v.b + 0.6, v.z); s.userData["b"] = v.b; const l = new THREE.PointLight(0xffc840, 0.8, 2.5); l.position.copy(s.position); if (!LOW_END) scene.add(l); return { sprite: s, light: l } as Ent; });
-  const bats = BATTERIES.map((b) => { const s = sprite("bat", 0.25, 0.4); const v = V(b.x, b.y); s.position.set(v.x, v.b + 0.3, v.z); const l = new THREE.PointLight(0x60ff80, 0.5, 1.8); l.position.copy(s.position); if (!LOW_END) scene.add(l); return { sprite: s, light: l } as Ent; });
+  // keys and batteries lie flat on the floor with no dynamic light of their own:
+  // the player finds them with the flashlight, which keeps 9 point lights off the GPU
+  const keys = KEYS.map((k) => { const s = sprite("key", 0.45, 0.22); const v = V(k.x, k.y); s.position.set(v.x, v.b + 0.12, v.z); s.userData["b"] = v.b; return { sprite: s } as Ent; });
+  const bats = BATTERIES.map((b) => { const s = sprite("bat", 0.2, 0.32); const v = V(b.x, b.y); s.position.set(v.x, v.b + 0.17, v.z); s.userData["b"] = v.b; return { sprite: s } as Ent; });
   const npcKuyangs: Record<string, Kuyang> = {};
   const players: Record<string, { sprite: THREE.Sprite | null; av: Avatar | null; ku: Kuyang | null; tag: THREE.Sprite | null; light: THREE.SpotLight; target: THREE.Object3D; shout: THREE.Sprite }> = {};
 
@@ -409,8 +411,8 @@ export function createScene(canvas: HTMLCanvasElement, opts: { me: CharId | "gho
       }
       const open = st.keyMask === 31;
       gateMat.color.set(open ? 0x59e36b : 0x8b0d17); gateMat.emissive.set(open ? 0x59e36b : 0x8b0d17); gateLight.color.set(open ? 0x59e36b : 0x8b0d17);
-      keys.forEach((k, i) => { const on = !(st.keyMask & (1 << i)); k.sprite.visible = on; k.light!.visible = on; k.sprite.position.y = (k.sprite.userData["b"] as number) + 0.6 + Math.sin(st.t * 3 + i) * 0.08; });
-      bats.forEach((b, i) => { const on = !(st.batMask & (1 << i)); b.sprite.visible = on; b.light!.visible = on; });
+      keys.forEach((k, i) => { const on = !(st.keyMask & (1 << i)); k.sprite.visible = on; k.sprite.position.y = (k.sprite.userData["b"] as number) + 0.12; });
+      bats.forEach((b, i) => { const on = !(st.batMask & (1 << i)); b.sprite.visible = on; });
       for (const k of Object.values(npcKuyangs)) k.root.visible = false;
       st.npcs.forEach((n, i) => {
         const key = `${n.kind}${i}`;
