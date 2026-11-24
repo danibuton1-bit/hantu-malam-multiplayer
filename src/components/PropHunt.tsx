@@ -20,11 +20,11 @@ const SPEED = 150;
 const START_DOORS = DOORS.map((d, i) => ({ d, i })).filter(({ d }) => (d.x === 500 && d.y === 250) || (d.x === 250 && d.y === 500)).map((o) => o.i);
 const freeAt = (x: number, y: number) => ![...WALLS, ...BLOCKING].some((w) => circleHitsRect(x, y, 16, w));
 
-export function PropHunt({ code, me, players, startedAt, isHost, onBackToLobby, onLeave }: {
-  code: string; me: string; players: GamePlayer[]; startedAt: number; isHost: boolean; onBackToLobby: () => void; onLeave: () => void;
+export function PropHunt({ code, me, players, startedAt, isHost, onBackToLobby, onLeave, bots = false }: {
+  code: string; me: string; players: GamePlayer[]; startedAt: number; isHost: boolean; onBackToLobby: () => void; onLeave: () => void; bots?: boolean;
 }) {
   applyMap("rumah");
-  const all = useMemo(() => [...players, ...squadBots(players)], [players]);
+  const all = useMemo(() => [...players, ...squadBots(players, bots)], [players, bots]);
   const nums = useMemo(() => squadNumbers(all.map((p) => p.id), startedAt), [all, startedAt]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const joy = useRef({ x: 0, y: 0 });

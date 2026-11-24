@@ -384,10 +384,11 @@ export function createScene(canvas: HTMLCanvasElement, opts: { me: CharId | "gho
       }
       drone.visible = !!st.drone;
       if (st.drone) { drone.position.set(st.drone.x * U, st.drone.h + Math.sin(st.t * 2) * 0.03, st.drone.y * U); drone.rotation.y = st.drone.yaw; rotors.forEach((r, i) => { r.rotation.y = st.t * 40 + i; }); const on = Math.sin(st.t * 6) > 0; ledR.visible = on; ledG.visible = !on; }
-      const sa = scareAt < 0 ? 1 : (st.t - scareAt);
+      const sa = scareAt < 0 ? -1 : (st.t - scareAt); // -1 = no jumpscare yet: model stays hidden
       if (sa >= 0 && sa < 1.4) {
         // lunge: 2.4 m -> 0.95 m, facing the camera (model faces +z) in front of the eyes in ~0.18 s, then hover there grinning
         const k = Math.min(1, sa / 0.18), d = 2.4 - (2.4 - 0.95) * (1 - (1 - k) ** 3);
+        for (const m of Object.values(scareModels)) if (m !== scareKu) m.root.visible = false;
         scareKu.root.visible = true; scareKu.update({ t: st.t * 3, dt: st.dt, moving: true });
         scareKu.root.position.set(Math.sin(st.t * 40) * 0.02, -0.18 - (scareKu.root.position.y - scareKu.root.position.y), -d);
         scareKu.root.position.y = 0.12 - scareOff + Math.sin(st.t * 30) * 0.015; scareKu.root.rotation.set(0.1, 0, 0);

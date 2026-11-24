@@ -9,6 +9,8 @@ import { Game, type GamePlayer } from "@/components/Game";
 import { MicButton } from "@/components/MicButton";
 import { PropHunt } from "@/components/PropHunt";
 import { PETAK } from "@/lib/prophunt";
+import { ModePicker, mapLabel, teamLabel, type ModeChoice } from "@/components/ModePicker";
+import { botsActive, isTeamMode, teamMax } from "@/lib/team-mode";
 import { MuteButton } from "@/components/MuteButton";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ProfileCorner } from "@/components/ProfileCorner";
@@ -18,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { normalizeChar } from "@/lib/art";
 import { audio } from "@/lib/audio";
 import { EMOTE_MS } from "@/lib/emotes";
-import { assignRoles, isMapId, MAPS, roomCode, type MapId } from "@/lib/game";
+import { assignRoles, isMapId, roomCode } from "@/lib/game";
 import { isOffline } from "@/lib/heartbeat";
 import { useIsAdmin } from "@/lib/admin";
 import { getMedia, onMedia, type MediaItem } from "@/lib/media";
@@ -38,7 +40,7 @@ export const Route = createFileRoute("/home")({
   component: Lobby,
 });
 
-type RoomRow = { code: string; host_id: string; status: string; map: string; countdown_until: string | null };
+type RoomRow = { code: string; host_id: string; status: string; map: string; countdown_until: string | null; team_mode: string; bots: boolean };
 
 async function createSquad(hostId: string): Promise<string | null> {
   for (let i = 0; i < 5; i++) {
@@ -71,10 +73,10 @@ function Lobby() {
     void (async () => {
       let c = getSquad();
       if (c) {
-        const { data: r } = await supabase.from("rooms").select("status").eq("code", c).maybeSingle();
+        const { data: r } = await supabase.from("rooms").select("status,team_mode").eq("code", c).maybeSingle();
         const { data: mine } = await supabase.from("players").select("id").eq("room_code", c).eq("profile_id", account.id).maybeSingle();
         const { count } = await supabase.from("players").select("id", { count: "exact", head: true }).eq("room_code", c);
-        if (!r || (!mine && (r.status !== "lobby" || (count ?? 0) >= 4))) {
+        if (!r || (!mine && (r.status !== "lobby" || (count ?? 0) >= teamMax(r.team_mode)))) {
           if (r && !mine) setErr("Squad teman penuh atau sedang bermain.");
           c = null;
         } else if (!mine) {
@@ -97,7 +99,7 @@ function Lobby() {
   const refresh = useCallback(async () => {
     if (!code) return;
     const [{ data: r }, { data: ps }, { data: gs }] = await Promise.all([
-      supabase.from("rooms").select("code,host_id,status,map,countdown_until").eq("code", code).maybeSingle(),
+      supabase.from("rooms").select("code,host_id,status,map,countdown_until,team_mode,bots").eq("code", code).maybeSingle(),
       supabase.from("players").select("*").eq("room_code", code).order("joined_at"),
       supabase.from("game_state").select("started_at").eq("room_code", code).maybeSingle(),
     ]);
@@ -232,11 +234,15 @@ function Lobby() {
     lastLeft.current = counting ? left : null;
   }, [counting, left]);
 
-  async function setMap(m: MapId | typeof PETAK) {
+  async function setMode(v: ModeChoice) {
     if (!code) return;
-    setRoomRow((r) => (r ? { ...r, map: m } : r));
-    await supabase.from("rooms").update({ map: m }).eq("code", code);
+    const map = v.map === PETAK || isMapId(v.map) ? v.map : "rumah";
+    setRoomRow((r) => (r ? { ...r, map, team_mode: v.team, bots: v.bots } : r));
+    const { error } = await supabase.from("rooms").update({ map, team_mode: v.team, bots: v.bots }).eq("code", code);
+    setErr(error ? "Gagal menyimpan mode, coba lagi." : "");
   }
+  const teamMode = isTeamMode(room?.team_mode) ? room.team_mode : "squad";
+  const withBots = botsActive(teamMode, room?.bots ?? true, players.length);
   async function setPref(pref: "ghost" | "hunter") {
     if (!account || !code) return;
     setPlayers((ps) => ps.map((p) => (p.id === account.id ? { ...p, pref } : p)));
@@ -256,10 +262,10 @@ function Lobby() {
 
   if (!account) return null;
   if (playing && room && code && room.map === PETAK) {
-    return <PropHunt code={code} me={account.id} players={players} startedAt={startedAt} isHost={isHost} onBackToLobby={backToLobby} onLeave={leaveSquad} />;
+    return <PropHunt code={code} me={account.id} players={players} startedAt={startedAt} isHost={isHost} onBackToLobby={backToLobby} onLeave={leaveSquad} bots={withBots} />;
   }
   if (playing && room && code) {
-    return <Game code={code} me={account.id} players={players} startedAt={startedAt} isHost={isHost} onBackToLobby={backToLobby} onLeave={leaveSquad} map={isMapId(room.map) ? room.map : "rumah"} />;
+    return <Game code={code} me={account.id} players={players} startedAt={startedAt} isHost={isHost} onBackToLobby={backToLobby} onLeave={leaveSquad} map={isMapId(room.map) ? room.map : "rumah"} bots={withBots} />;
   }
 
   const myPref = players.find((p) => p.id === account.id)?.pref ?? "hunter";
@@ -304,7 +310,7 @@ function Lobby() {
       {/* squad list + role */}
       <div className="absolute bottom-2 left-2 z-10 flex w-52 flex-col gap-1.5">
         <div className="game-panel rounded-lg p-1.5 text-[11px]">
-          <div className="mb-1 flex items-center justify-between font-bold text-gold"><span>SQUAD {players.length}/4</span>{players.length > 1 && <button onClick={() => void leaveSquad()} className="text-[10px] text-muted-foreground underline">Keluar squad</button>}</div>
+          <div className="mb-1 flex items-center justify-between font-bold text-gold"><span>{teamMode.toUpperCase()} {players.length}/{teamMax(teamMode)}</span>{players.length > 1 && <button onClick={() => void leaveSquad()} className="text-[10px] text-muted-foreground underline">Keluar squad</button>}</div>
           {players.map((p, i) => (
             <div key={p.id} className="flex items-center gap-1 truncate">
               {i === 0 && <Crown className="size-3 shrink-0 text-gold" />}
@@ -322,13 +328,7 @@ function Lobby() {
 
       {/* map + start */}
       <div className="absolute bottom-2 right-2 z-10 flex w-60 flex-col gap-1.5">
-        <div className="game-panel rounded-lg p-1.5">
-          <div className="mb-1 text-center text-[10px] font-bold text-gold">MODE / MAP {isHost ? "" : "(dipilih kapten)"}</div>
-          <div className="grid grid-cols-2 gap-1">
-            {MAPS.map((m) => <button key={m.id} disabled={!isHost || counting} onClick={() => void setMap(m.id)} className={`truncate rounded border px-1.5 py-1 text-left text-[10px] font-bold ${room?.map === m.id ? "border-primary bg-primary/25" : "border-border bg-background/40"}`}>{m.nama}</button>)}
-            <button disabled={!isHost || counting} onClick={() => void setMap(PETAK)} className={`col-span-2 truncate rounded border px-1.5 py-1 text-[10px] font-bold ${room?.map === PETAK ? "border-gold bg-gold/25 text-gold" : "border-border bg-background/40"}`}>MODE PETAK UMPET</button>
-          </div>
-        </div>
+        <ModePicker value={{ map: room?.map ?? "rumah", team: teamMode, bots: room?.bots ?? true }} isHost={isHost} disabled={counting || !room} humans={players.length} onConfirm={(v) => void setMode(v)} />
         {err && <p className="text-[10px] text-destructive">{err}</p>}
         <p className="text-center text-[9px] text-muted-foreground">{ghostWanted === 0 || players.length < 2 ? "Tidak ada hantu pemain: Hantu AI akan berburu." : "Satu hantu dipilih acak."}</p>
         {isHost ? (
@@ -346,7 +346,7 @@ function Lobby() {
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-void/60">
           <div className="text-sm font-bold tracking-widest text-gold">PERTANDINGAN DIMULAI DALAM</div>
           <div key={left} className="font-horror text-8xl text-primary animate-in zoom-in-50 fade-in duration-300">{left}</div>
-          <div className="text-xs text-muted-foreground">{room?.map === PETAK ? "Mode: Petak Umpet" : `Map: ${MAPS.find((m) => m.id === room?.map)?.nama}`}</div>
+          <div className="text-xs text-muted-foreground">{mapLabel(room?.map)} · {teamLabel(teamMode, room?.bots ?? true)}</div>
           <Button variant="secondary" size="lg" className="font-horror text-xl" onClick={() => void cancelCountdown()}><X className="size-5" /> BATALKAN</Button>
         </div>
       )}

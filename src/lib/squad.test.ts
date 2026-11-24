@@ -11,5 +11,7 @@ describe("solo squad bots", () => {
   it("a full squad of 4 gets no bots", () => {
     expect(squadBots([{ karakter: "raka" }, { karakter: "aisyah" }, { karakter: "qila" }, { karakter: "raka" }])).toHaveLength(0);
   });
+  it("solo with bots turned off gets no bots", () => { expect(squadBots([{ karakter: "raka" }], false)).toHaveLength(0); });
+  it("a duo of 2 humans gets no bots", () => { expect(squadBots([{ karakter: "raka" }, { karakter: "qila" }])).toHaveLength(0); });
   it("drone can fly up to 40m", () => { expect(DRONE.MAX_H).toBe(40); });
 });

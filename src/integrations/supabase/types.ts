@@ -291,28 +291,34 @@ export type Database = {
       }
       rooms: {
         Row: {
+          bots: boolean
           code: string
           countdown_until: string | null
           created_at: string
           host_id: string
           map: string
           status: string
+          team_mode: string
         }
         Insert: {
+          bots?: boolean
           code: string
           countdown_until?: string | null
           created_at?: string
           host_id: string
           map?: string
           status?: string
+          team_mode?: string
         }
         Update: {
+          bots?: boolean
           code?: string
           countdown_until?: string | null
           created_at?: string
           host_id?: string
           map?: string
           status?: string
+          team_mode?: string
         }
         Relationships: []
       }

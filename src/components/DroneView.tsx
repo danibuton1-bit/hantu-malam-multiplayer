@@ -49,11 +49,11 @@ export function DroneView({ code, onExit }: { code: string; onExit: () => void }
       const [{ data }, { data: gs }, { data: rm }] = await Promise.all([
         supabase.from("players").select("profile_id,nama,karakter,role").eq("room_code", code),
         supabase.from("game_state").select("started_at").eq("room_code", code).maybeSingle(),
-        supabase.from("rooms").select("map").eq("code", code).maybeSingle(),
+        supabase.from("rooms").select("map,team_mode,bots").eq("code", code).maybeSingle(),
       ]);
       const m = isMapId(rm?.map) ? rm.map : "rumah"; applyMap(m); setMap(m);
       const ps: P[] = (data ?? []).map((p) => ({ id: p.profile_id, nama: p.nama, karakter: normalizeChar(p.karakter) ?? "raka", role: p.role }));
-      ps.push(...squadBots(ps).map((b) => ({ id: b.id, nama: b.nama, karakter: b.karakter, role: "hunter" })));
+      ps.push(...squadBots(ps, rm?.team_mode === "solo" && rm.bots).map((b) => ({ id: b.id, nama: b.nama, karakter: b.karakter, role: "hunter" })));
       setHud((h) => ({ ...h, startedAt: gs?.started_at ? new Date(gs.started_at).getTime() : Date.now() }));
       setPlayers(ps);
     })();

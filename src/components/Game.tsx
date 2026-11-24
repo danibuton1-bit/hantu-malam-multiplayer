@@ -23,16 +23,16 @@ type Live = { yaw: number; x: number; y: number; tx: number; ty: number; status:
 const HUNTER_SPEED = 150, GHOST_SPEED = 168;
 export const BOT_MATE_PREFIX = "bot-mate-";
 const BOT_NAMES = ["Bot Dimas", "Bot Sari", "Bot Yoga"];
-/** Squad is always 4: empty human slots are filled with hunter bots (same list on every client). */
-export function squadBots(players: { karakter: string }[]): GamePlayer[] {
+/** Bots only join a SOLO match (exactly one human) when the captain allowed them; duo/squad never get bots. */
+export function squadBots(players: { karakter: string }[], bots = true): GamePlayer[] {
   const used = new Set(players.map((p) => p.karakter));
   const free = (Object.keys(CHARACTERS) as CharId[]).filter((c) => !used.has(c));
-  const n = Math.max(0, 4 - players.length);
+  const n = bots && players.length === 1 ? 3 : 0;
   return Array.from({ length: n }, (_, i) => ({ id: `${BOT_MATE_PREFIX}${i}`, nama: BOT_NAMES[i]!, username: "", karakter: free[i % Math.max(1, free.length)] ?? "raka", role: "hunter" as const, status: "alive" }));
 }
 
-export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLeave, map = "rumah" }: {
-  code: string; me: string; players: GamePlayer[]; startedAt: number; isHost: boolean; onBackToLobby: () => void; onLeave: () => void; map?: MapId;
+export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLeave, map = "rumah", bots = false }: {
+  code: string; me: string; players: GamePlayer[]; startedAt: number; isHost: boolean; onBackToLobby: () => void; onLeave: () => void; map?: MapId; bots?: boolean;
 }) {
   applyMap(map);
   const [onLift, setOnLift] = useState(false);
@@ -57,8 +57,8 @@ export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLe
   const [chatLog, setChatLog] = useState<{ k: number; id: string; sender_nama: string; body: string }[]>([]);
   const all = useMemo<GamePlayer[]>(() => {
     // no AI Kuyang player any more: the haunt cycle (one ghost at a time) replaces it
-    return [...players, ...squadBots(players)];
-  }, [players]);
+    return [...players, ...squadBots(players, bots)];
+  }, [players, bots]);
   const [emoteOpen, setEmoteOpen] = useState(false);
   const [scare, setScare] = useState(0);
   const ambushRef = useRef<() => void>(() => {});

@@ -38,7 +38,7 @@ use the editor.
 - Admin is the first profile, stored in `admin_profiles` (no client access) and checked via the `is_admin(id, kode_id)` RPC. Why: no Cloud Auth; roles must not live on profiles or in localStorage.
 - The admin drone spectates via the same `game-<code>` broadcast channel and sends a `drone` event that players' scenes render. Why: no extra server state.
 - Maps share one room grid; `applyMap(id)` in game.ts swaps the live `ROOMS/WALLS/DOORS` bindings and scene3d draws per-map atmosphere from `opts.map`; the room's map lives in `rooms.map`. Why: keys, spawns and ghost paths stay valid on every map.
-- Solo/partial squads are padded to 4 hunters with `squadBots()` (deterministic ids `bot-mate-N`), simulated by the host and broadcast as normal `pos` events. Why: same serverless pattern as the AI ghost.
+- Bots (`squadBots()`, ids `bot-mate-N`) only join a SOLO match with one human when `rooms.bots` is true; `rooms.team_mode` (solo/duo/squad) caps squad size. Host simulates them and broadcasts normal `pos` events. Why: user wants bots only in solo, with an on/off switch.
 - Doors start closed and open only by click/E/tap (`doorOpen` in game.ts, synced via a `door` broadcast; host bots auto-open). Why: user wants click-to-open doors that physically block.
 - Hotel floor 2 is the bottom half of the grid rendered FLOOR2_H above floor 1 via scene3d `mkV`; the two lift pads share x/z so one cabin rides a real shaft (synced via `lift` broadcast). Why: keeps 2D logic while showing a real stacked building.
 - No 2D Kuyang images anywhere: menus/lobby use `Stage3D`, the jumpscare is the 3D model attached to the camera (`scene.scare`). Why: user wants all ghosts as real 3D.
