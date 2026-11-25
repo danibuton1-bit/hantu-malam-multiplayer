@@ -1,7 +1,7 @@
 // Admin-uploaded media (lobby backgrounds, music, ghost SFX), downloaded once at boot into the
 // browser Cache Storage and played from local blob URLs so the lobby video never buffers.
 import { supabase } from "@/integrations/supabase/client";
-import type { MediaKind } from "./media.functions";
+import { getMediaSignedUrls, type MediaKind } from "./media.functions";
 
 export type MediaItem = { id: string; kind: MediaKind; ghost: string | null; media_type: string; nama: string; path: string; src: string };
 
@@ -25,8 +25,8 @@ export async function preloadMedia(onProgress: (done: number, total: number, lab
   const missing = cache ? (await Promise.all(list.map(async (r) => ((await cache.match(`/hm-media/${r.path}`)) ? null : r.path)))).filter((p): p is string => !!p) : list.map((r) => r.path);
   const signed: Record<string, string> = {};
   if (missing.length) {
-    const { data } = await supabase.storage.from("game-media").createSignedUrls(missing, 3600);
-    for (const s of data ?? []) if (s.path && s.signedUrl) signed[s.path] = s.signedUrl;
+    const urls = await getMediaSignedUrls({ data: { paths: missing } });
+    Object.assign(signed, urls);
   }
   const out: MediaItem[] = [];
   let done = 0;

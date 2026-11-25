@@ -29,6 +29,13 @@
       "when": 1795594499685,
       "tag": "0003_system_announcements_mailbox",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795596388628,
+      "tag": "0004_secure_rooms_players_game_state_and_media_storage",
+      "breakpoints": true
     }
   ]
 }

@@ -53,3 +53,23 @@ export const adminDeleteMedia = createServerFn({ method: "POST" })
     if (row) { await sb.storage.from("game-media").remove([row.path]); await sb.from("media_assets").delete().eq("id", data.mediaId); }
     return { ok: true };
   });
+
+/** Return short-lived signed download URLs only for paths registered in media_assets. */
+export const getMediaSignedUrls = createServerFn({ method: "POST" })
+  .inputValidator((d: { paths: string[] }) => {
+    const paths = Array.isArray(d.paths)
+      ? [...new Set(d.paths.filter((p): p is string => typeof p === "string" && p.length > 0 && p.length <= 200))].slice(0, 50)
+      : [];
+    return { paths };
+  })
+  .handler(async ({ data }) => {
+    if (!data.paths.length) return {} as Record<string, string>;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows } = await supabaseAdmin.from("media_assets").select("path").in("path", data.paths);
+    const allowed = (rows ?? []).map((r) => r.path);
+    if (!allowed.length) return {} as Record<string, string>;
+    const { data: signed } = await supabaseAdmin.storage.from("game-media").createSignedUrls(allowed, 3600);
+    const out: Record<string, string> = {};
+    for (const s of signed ?? []) if (s.path && s.signedUrl) out[s.path] = s.signedUrl;
+    return out;
+  });

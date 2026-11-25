@@ -31,8 +31,8 @@ export function squadBots(players: { karakter: string }[], bots = true): GamePla
   return Array.from({ length: n }, (_, i) => ({ id: `${BOT_MATE_PREFIX}${i}`, nama: BOT_NAMES[i]!, username: "", karakter: free[i % Math.max(1, free.length)] ?? "raka", role: "hunter" as const, status: "alive" }));
 }
 
-export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLeave, map = "rumah", bots = false }: {
-  code: string; me: string; players: GamePlayer[]; startedAt: number; isHost: boolean; onBackToLobby: () => void; onLeave: () => void; map?: MapId; bots?: boolean;
+export function Game({ code, me, kode = "", players, startedAt, isHost, onBackToLobby, onLeave, map = "rumah", bots = false }: {
+  code: string; me: string; kode?: string; players: GamePlayer[]; startedAt: number; isHost: boolean; onBackToLobby: () => void; onLeave: () => void; map?: MapId; bots?: boolean;
 }) {
   // only when the match/map starts — calling it on every render used to slam every open door shut
   useMemo(() => applyMap(map), [map]);
@@ -116,7 +116,7 @@ export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLe
       l.status = s;
       if (s === "caught") { audio.scream(); if (id === me) notify("KAMU TERTANGKAP! Sekarang kamu jadi penonton."); else notify(`${all.find((p) => p.id === id)?.nama} tertangkap!`); }
       if (s === "escaped") notify(`${all.find((p) => p.id === id)?.nama} berhasil kabur!`);
-      if (id === me) void supabase.from("players").update({ status: s }).eq("room_code", code).eq("profile_id", me);
+      if (id === me && kode) void supabase.rpc("update_player_status", { p_id: me, p_kode: kode, p_code: code, p_status: s });
     };
     const gainKeys = (mask: number, local: boolean) => {
       const fresh = mask & ~keyMask;
@@ -418,9 +418,8 @@ export function Game({ code, me, players, startedAt, isHost, onBackToLobby, onLe
         const res = decideOutcome(all.filter((p) => p.role === "hunter").map((p) => ({ status: live[p.id]!.status })), Infinity);
         if (res) {
           ended = true; setOutcome(res); audio.stopAll();
-          if (isHost) {
-            void supabase.from("game_state").update({ winner: res, keys_found: [0, 1, 2, 3, 4].filter((i) => keyMask & (1 << i)).length, updated_at: new Date().toISOString() }).eq("room_code", code);
-            void supabase.from("rooms").update({ status: "ended" }).eq("code", code);
+          if (isHost && kode) {
+            void supabase.rpc("finish_room_match", { p_id: me, p_kode: kode, p_code: code, p_winner: res, p_keys_found: [0, 1, 2, 3, 4].filter((i) => keyMask & (1 << i)).length });
           }
         }
       }

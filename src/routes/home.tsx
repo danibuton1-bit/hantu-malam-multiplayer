@@ -43,11 +43,11 @@ export const Route = createFileRoute("/home")({
 
 type RoomRow = { code: string; host_id: string; status: string; map: string; countdown_until: string | null; team_mode: string; bots: boolean };
 
-async function createSquad(hostId: string): Promise<string | null> {
+async function createSquad(hostId: string, hostKode: string): Promise<string | null> {
   for (let i = 0; i < 5; i++) {
     const c = roomCode();
-    const { error } = await supabase.from("rooms").insert({ code: c, host_id: hostId });
-    if (!error) return c;
+    const { data, error } = await supabase.rpc("create_squad_room", { p_id: hostId, p_kode: hostKode, p_code: c });
+    if (!error && data === true) return c;
   }
   return null;
 }
@@ -74,24 +74,21 @@ function Lobby() {
     void (async () => {
       let c = getSquad();
       if (c) {
-        const { data: r } = await supabase.from("rooms").select("status,team_mode").eq("code", c).maybeSingle();
-        const { data: mine } = await supabase.from("players").select("id").eq("room_code", c).eq("profile_id", account.id).maybeSingle();
-        const { count } = await supabase.from("players").select("id", { count: "exact", head: true }).eq("room_code", c);
-        if (!r || (!mine && (r.status !== "lobby" || (count ?? 0) >= teamMax(r.team_mode)))) {
-          if (r && !mine) setErr("Squad teman penuh atau sedang bermain.");
+        const { data: res, error } = await supabase.rpc("join_squad_room", { p_id: account.id, p_kode: account.kode_id, p_code: c });
+        if (error || res !== "ok") {
+          if (res === "full") setErr("Squad teman penuh atau sedang bermain.");
           c = null;
-        } else if (!mine) {
-          await supabase.from("players").insert({ room_code: c, profile_id: account.id, nama: account.nama, username: account.username, karakter: account.karakter_pilihan });
         }
       }
       if (!c) {
-        c = await createSquad(account.id);
-        if (c) await supabase.from("players").insert({ room_code: c, profile_id: account.id, nama: account.nama, username: account.username, karakter: account.karakter_pilihan });
+        c = await createSquad(account.id, account.kode_id);
+        if (c) {
+          const { data: res, error } = await supabase.rpc("join_squad_room", { p_id: account.id, p_kode: account.kode_id, p_code: c });
+          if (error || res !== "ok") c = null;
+        }
       }
       if (!alive || !c) { if (!c) setErr("Gagal membuat squad, muat ulang halaman."); return; }
       setSquad(c);
-      // leave any other squad I was still sitting in
-      await supabase.from("players").delete().eq("profile_id", account.id).neq("room_code", c);
       setCode(c);
     })();
     return () => { alive = false; };
@@ -155,7 +152,7 @@ function Lobby() {
       for (const p of playersRef.current) {
         if (p.id === account.id) continue;
         if (st[p.id]) { seen.current[p.id] = t; continue; }
-        if (isOffline(seen.current[p.id] ?? joinedAt, t)) { delete seen.current[p.id]; void supabase.from("players").delete().eq("room_code", code).eq("profile_id", p.id); }
+        if (isOffline(seen.current[p.id] ?? joinedAt, t)) { delete seen.current[p.id]; void supabase.rpc("kick_offline_player", { p_id: account.id, p_kode: account.kode_id, p_code: code, p_target_id: p.id }); }
       }
     }, 3000);
     return () => { clearInterval(hb); lobbyCh.current = null; void supabase.removeChannel(ch); };
@@ -199,28 +196,32 @@ function Lobby() {
   useEffect(() => { if (!playing) { myReady.current = false; void lobbyCh.current?.track({ ready: false }); setReadyIds((r) => { const n = new Set(r); if (account) n.delete(account.id); return n; }); } }, [playing, account]);
 
   async function beginCountdown() {
-    if (!code || !allReady) return;
+    if (!account || !code || !allReady) return;
     audio.init();
     setNow(Date.now());
-    await supabase.from("rooms").update({ countdown_until: new Date(Date.now() + COUNTDOWN_MS).toISOString() }).eq("code", code);
+    await supabase.rpc("update_room_countdown", { p_id: account.id, p_kode: account.kode_id, p_code: code, p_until: new Date(Date.now() + COUNTDOWN_MS).toISOString() });
     void refresh();
   }
   async function cancelCountdown() {
-    if (!code) return;
-    await supabase.from("rooms").update({ countdown_until: null }).eq("code", code);
+    if (!account || !code) return;
+    await supabase.rpc("update_room_countdown", { p_id: account.id, p_kode: account.kode_id, p_code: code, p_until: null as unknown as string });
     void refresh();
   }
   const starting = useRef(false);
   async function startMatch() {
-    if (!code || starting.current) return;
+    if (!account || !code || starting.current) return;
     starting.current = true;
     try {
       if (!players.slice(1).every((p) => readyIds.has(p.id))) { await cancelCountdown(); return; }
       audio.stopAll();
       const { roles } = assignRoles(players.map((p) => ({ id: p.id, pref: p.pref ?? "hunter" })));
-      await Promise.all(players.map((p) => supabase.from("players").update({ role: roles[p.id]!, status: "alive" }).eq("room_code", code).eq("profile_id", p.id)));
-      await supabase.from("game_state").upsert({ room_code: code, keys_found: 0, started_at: new Date(Date.now() + 3000).toISOString(), winner: null, updated_at: new Date().toISOString() });
-      await supabase.from("rooms").update({ status: "playing", countdown_until: null }).eq("code", code);
+      await supabase.rpc("start_room_match", {
+        p_id: account.id,
+        p_kode: account.kode_id,
+        p_code: code,
+        p_roles: roles,
+        p_started_at: new Date(Date.now() + 3000).toISOString(),
+      });
       void refresh();
     } finally { starting.current = false; }
   }
@@ -236,10 +237,10 @@ function Lobby() {
   }, [counting, left]);
 
   async function setMode(v: ModeChoice) {
-    if (!code) return;
+    if (!account || !code) return;
     const map = v.map === PETAK || isMapId(v.map) ? v.map : "rumah";
     setRoomRow((r) => (r ? { ...r, map, team_mode: v.team, bots: v.bots } : r));
-    const { error } = await supabase.from("rooms").update({ map, team_mode: v.team, bots: v.bots }).eq("code", code);
+    const { error } = await supabase.rpc("update_room_mode", { p_id: account.id, p_kode: account.kode_id, p_code: code, p_map: map, p_team_mode: v.team, p_bots: v.bots });
     setErr(error ? "Gagal menyimpan mode, coba lagi." : "");
   }
   const teamMode = isTeamMode(room?.team_mode) ? room.team_mode : "squad";
@@ -247,17 +248,16 @@ function Lobby() {
   async function setPref(pref: "ghost" | "hunter") {
     if (!account || !code) return;
     setPlayers((ps) => ps.map((p) => (p.id === account.id ? { ...p, pref } : p)));
-    await supabase.from("players").update({ role_pref: pref }).eq("room_code", code).eq("profile_id", account.id);
+    await supabase.rpc("set_player_pref", { p_id: account.id, p_kode: account.kode_id, p_code: code, p_pref: pref });
   }
   async function backToLobby() {
-    if (!code) return;
-    await supabase.from("players").update({ role: null, status: "alive" }).eq("room_code", code);
-    await supabase.from("rooms").update({ status: "lobby", countdown_until: null }).eq("code", code);
+    if (!account || !code) return;
+    await supabase.rpc("reset_room_to_lobby", { p_id: account.id, p_kode: account.kode_id, p_code: code });
     void refresh();
   }
   async function leaveSquad() {
     if (!account || !code) return;
-    await supabase.from("players").delete().eq("room_code", code).eq("profile_id", account.id);
+    await supabase.rpc("leave_squad_room", { p_id: account.id, p_kode: account.kode_id, p_code: code });
     setSquad(""); setCode(null); setRoomRow(null); setPlayers([]); setSquadTick((x) => x + 1);
   }
 
@@ -266,7 +266,7 @@ function Lobby() {
     return <PropHunt code={code} me={account.id} players={players} startedAt={startedAt} isHost={isHost} onBackToLobby={backToLobby} onLeave={leaveSquad} bots={withBots} />;
   }
   if (playing && room && code) {
-    return <Game code={code} me={account.id} players={players} startedAt={startedAt} isHost={isHost} onBackToLobby={backToLobby} onLeave={leaveSquad} map={isMapId(room.map) ? room.map : "rumah"} bots={withBots} />;
+    return <Game code={code} me={account.id} kode={account.kode_id} players={players} startedAt={startedAt} isHost={isHost} onBackToLobby={backToLobby} onLeave={leaveSquad} map={isMapId(room.map) ? room.map : "rumah"} bots={withBots} />;
   }
 
   const myPref = players.find((p) => p.id === account.id)?.pref ?? "hunter";

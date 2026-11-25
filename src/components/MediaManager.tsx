@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Film, Music, Trash2, Upload } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { adminAddMedia, adminDeleteMedia, adminUploadSlot, type MediaKind } from "@/lib/media.functions";
+import { adminAddMedia, adminDeleteMedia, adminUploadSlot, getMediaSignedUrls, type MediaKind } from "@/lib/media.functions";
 import { Button } from "./ui/button";
 import type { Profile } from "@/lib/account";
 
@@ -20,16 +20,15 @@ export function MediaManager({ account }: { account: Profile }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
-  const slot = useServerFn(adminUploadSlot), add = useServerFn(adminAddMedia), del = useServerFn(adminDeleteMedia);
+  const slot = useServerFn(adminUploadSlot), add = useServerFn(adminAddMedia), del = useServerFn(adminDeleteMedia), signUrls = useServerFn(getMediaSignedUrls);
   const cred = { id: account.id, kode: account.kode_id };
 
   async function load() {
     const { data } = await supabase.from("media_assets").select("id,kind,ghost,media_type,nama,path").order("created_at");
     const list = (data ?? []) as Row[];
     if (list.length) {
-      const { data: s } = await supabase.storage.from("game-media").createSignedUrls(list.map((r) => r.path), 3600);
-      const map = Object.fromEntries((s ?? []).map((x) => [x.path, x.signedUrl]));
-      list.forEach((r) => { r.url = map[r.path] ?? undefined; });
+      const map = await signUrls({ data: { paths: list.map((r) => r.path) } });
+      list.forEach((r) => { const u = map[r.path]; if (u) r.url = u; });
     }
     setRows(list);
   }

@@ -15,11 +15,11 @@ type Msg = { id: string; sender_id: string; sender_nama: string; sender_karakter
 type Friend = { friend_id: string; nama: string; username: string; kode_id: string; karakter: string; status: string; incoming: boolean };
 const DAY = 24 * 3600 * 1000;
 
-async function createRoomFor(hostId: string) {
+async function createRoomFor(hostId: string, hostKode: string) {
   for (let i = 0; i < 5; i++) {
     const c = roomCode();
-    const { error } = await supabase.from("rooms").insert({ code: c, host_id: hostId });
-    if (!error) return c;
+    const { data, error } = await supabase.rpc("create_squad_room", { p_id: hostId, p_kode: hostKode, p_code: c });
+    if (!error && data === true) return c;
   }
   return null;
 }
@@ -112,7 +112,7 @@ export function SocialPanel({ room, className }: { room?: string; className?: st
   }
   async function invite(f: Friend) {
     let code = room ?? null;
-    if (!code) { code = await createRoomFor(me.id); if (!code) { setInfo("Gagal membuat lobby."); return; } }
+    if (!code) { code = await createRoomFor(me.id, me.kode_id); if (!code) { setInfo("Gagal membuat lobby."); return; } }
     sendInvite(f.friend_id, code);
     setInfo(`Undangan dikirim ke ${f.nama}.`);
     if (!room) joinSquad(code);

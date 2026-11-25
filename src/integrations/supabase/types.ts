@@ -372,12 +372,43 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_squad_room: {
+        Args: { p_code: string; p_id: string; p_kode: string }
+        Returns: boolean
+      }
       delete_announcement: {
         Args: { p_announcement_id: string; p_id: string; p_kode: string }
         Returns: undefined
       }
+      finish_room_match: {
+        Args: {
+          p_code: string
+          p_id: string
+          p_keys_found: number
+          p_kode: string
+          p_winner: string
+        }
+        Returns: undefined
+      }
       has_password: { Args: { p_id: string; p_kode: string }; Returns: boolean }
       is_admin: { Args: { p_id: string; p_kode: string }; Returns: boolean }
+      join_squad_room: {
+        Args: { p_code: string; p_id: string; p_kode: string }
+        Returns: string
+      }
+      kick_offline_player: {
+        Args: {
+          p_code: string
+          p_id: string
+          p_kode: string
+          p_target_id: string
+        }
+        Returns: undefined
+      }
+      leave_squad_room: {
+        Args: { p_code: string; p_id: string; p_kode: string }
+        Returns: undefined
+      }
       list_dm: {
         Args: { p_id: string; p_kode: string; p_other: string }
         Returns: {
@@ -454,6 +485,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      reset_room_to_lobby: {
+        Args: { p_code: string; p_id: string; p_kode: string }
+        Returns: undefined
+      }
       respond_friend: {
         Args: {
           p_accept: boolean
@@ -491,6 +526,39 @@ export type Database = {
       }
       set_password: {
         Args: { p_id: string; p_kode: string; p_new: string; p_old: string }
+        Returns: undefined
+      }
+      set_player_pref: {
+        Args: { p_code: string; p_id: string; p_kode: string; p_pref: string }
+        Returns: undefined
+      }
+      start_room_match: {
+        Args: {
+          p_code: string
+          p_id: string
+          p_kode: string
+          p_roles: Json
+          p_started_at: string
+        }
+        Returns: undefined
+      }
+      update_player_status: {
+        Args: { p_code: string; p_id: string; p_kode: string; p_status: string }
+        Returns: undefined
+      }
+      update_room_countdown: {
+        Args: { p_code: string; p_id: string; p_kode: string; p_until: string }
+        Returns: undefined
+      }
+      update_room_mode: {
+        Args: {
+          p_bots: boolean
+          p_code: string
+          p_id: string
+          p_kode: string
+          p_map: string
+          p_team_mode: string
+        }
         Returns: undefined
       }
     }
