@@ -17,11 +17,11 @@ export function SoundManager() {
   useEffect(() => setS(getSound()), []);
   const set = (k: keyof SoundSettings, v: number) => { const n = { ...s, [k]: v }; setS(n); saveSound(n); };
   return (
-    <section className="space-y-3">
+    <section className="space-y-3 rounded-xl border border-border bg-card/60 p-4">
       <h2 className="flex items-center gap-2 text-sm font-bold text-primary"><Volume2 className="size-4" /> SOUND MANAGER</h2>
       {ROWS.map((r) => (
-        <div key={r.k} className="flex items-center gap-3 rounded-lg border border-border bg-card/80 p-3">
-          <div className="w-40 text-sm">{r.label}</div>
+        <div key={r.k} className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3">
+          <div className="w-32 shrink-0 text-sm sm:w-40">{r.label}</div>
           <Slider className="flex-1" min={0} max={1.5} step={0.05} value={[s[r.k]]} onValueChange={(v) => set(r.k, v[0] ?? 0)} aria-label={r.label} />
           <span className="w-10 text-right text-xs">{Math.round(s[r.k] * 100)}%</span>
           <Button size="sm" variant="secondary" onClick={() => { audio.init(); r.test(); }}>Tes</Button>

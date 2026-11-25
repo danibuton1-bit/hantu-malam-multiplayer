@@ -53,12 +53,12 @@ export function MediaManager({ account }: { account: Profile }) {
   async function remove(id: string) { setBusy(id); try { await del({ data: { ...cred, mediaId: id } }); } catch { setMsg("Gagal menghapus"); } setBusy(null); void load(); }
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-3 rounded-xl border border-border bg-card/60 p-4">
       <h2 className="flex items-center gap-2 text-sm font-bold text-primary"><Film className="size-4" /> MEDIA GAME</h2>
       {SLOTS.map((s) => {
         const mine = rows.filter((r) => r.kind === s.kind && (!s.ghost || r.ghost === s.ghost));
         return (
-          <div key={s.kind} className="space-y-2 rounded-lg border border-border bg-card/80 p-3">
+          <div key={s.kind} className="space-y-2 rounded-lg border border-border bg-background/60 p-3">
             <div className="flex items-center gap-2 text-sm">
               {s.kind === "lobby_bg" ? <Film className="size-4 text-gold" /> : <Music className="size-4 text-gold" />}
               <span className="flex-1">{s.label}</span>

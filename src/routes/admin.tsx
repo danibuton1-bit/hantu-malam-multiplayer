@@ -42,28 +42,34 @@ function AdminPage() {
   if (admin === null) return <main className="p-6 text-muted-foreground">Memeriksa akses...</main>;
   if (!admin) return <main className="space-y-3 p-6"><p>Halaman ini khusus admin.</p><Button asChild><Link to="/home">Kembali</Link></Button></main>;
   return (
-    <main className="mx-auto h-full max-w-2xl space-y-4 overflow-y-auto p-4">
-      <div className="flex items-center gap-2">
+    <main className="mx-auto h-full w-full max-w-7xl space-y-6 overflow-y-auto p-4 md:p-6 lg:p-8">
+      <div className="flex items-center gap-3 border-b border-border/70 pb-4">
         <Button asChild size="sm" variant="ghost"><Link to="/home"><ArrowLeft /></Link></Button>
-        <h1 className="flex items-center gap-2 font-horror text-3xl text-gold"><Crown /> DASHBOARD ADMIN</h1>
+        <h1 className="flex items-center gap-2 font-horror text-3xl text-gold md:text-4xl"><Crown className="size-6 md:size-7" /> DASHBOARD ADMIN</h1>
         <Button size="sm" variant="secondary" className="ml-auto" onClick={() => void load()}><RefreshCw /></Button>
       </div>
-      <section className="space-y-2">
-        <h2 className="text-sm font-bold text-primary">PERTANDINGAN</h2>
-        {matches.length === 0 && <p className="text-sm text-muted-foreground">Belum ada pertandingan berlangsung.</p>}
-        {matches.map((m) => (
-          <div key={m.code} className="flex items-center gap-3 rounded-lg border border-border bg-card/80 p-3">
-            <div className="min-w-0 flex-1">
-              <div className="font-bold">{m.code} <span className={`ml-1 rounded px-1.5 text-[10px] ${m.status === "playing" ? "bg-destructive text-destructive-foreground" : "bg-muted"}`}>{m.status === "playing" ? "LIVE" : "LOBBY"}</span></div>
-              <div className="truncate text-xs text-muted-foreground">{m.players.join(", ")}</div>
-            </div>
-            <Button size="sm" disabled={m.status !== "playing"} onClick={() => void nav({ to: "/drone/$code", params: { code: m.code } })}><Plane /> Drone</Button>
-          </div>
-        ))}
-      </section>
-      {account && <MediaManager account={account} />}
-      {account && <AnnouncementManager account={account} />}
-      <SoundManager />
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
+        <div className="space-y-6">
+          <section className="space-y-3 rounded-xl border border-border bg-card/60 p-4">
+            <h2 className="text-sm font-bold text-primary">PERTANDINGAN ({matches.length})</h2>
+            {matches.length === 0 && <p className="text-sm text-muted-foreground">Belum ada pertandingan berlangsung.</p>}
+            {matches.map((m) => (
+              <div key={m.code} className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3">
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold">{m.code} <span className={`ml-1 rounded px-1.5 text-[10px] ${m.status === "playing" ? "bg-destructive text-destructive-foreground" : "bg-muted"}`}>{m.status === "playing" ? "LIVE" : "LOBBY"}</span></div>
+                  <div className="truncate text-xs text-muted-foreground">{m.players.join(", ")}</div>
+                </div>
+                <Button size="sm" disabled={m.status !== "playing"} onClick={() => void nav({ to: "/drone/$code", params: { code: m.code } })}><Plane /> Drone</Button>
+              </div>
+            ))}
+          </section>
+          {account && <AnnouncementManager account={account} />}
+        </div>
+        <div className="space-y-6">
+          {account && <MediaManager account={account} />}
+          <SoundManager />
+        </div>
+      </div>
     </main>
   );
 }
