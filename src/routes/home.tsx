@@ -276,11 +276,10 @@ function Lobby() {
     .map((p, i) => ({ key: p.id, karakter: p.karakter, nama: p.nama, crown: i === 0 && players.length > 1, emote: emotes[p.id]?.e ?? null }));
 
   return (
-    <main className="relative h-full min-h-full overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 70%, hsl(350 70% 18% / .7), transparent 60%), var(--background)" }}>
-      {/* cinema screen behind the squad (no seats) */}
-      <div className="pointer-events-none absolute inset-x-[8%] top-[6%] h-[58%]">
-        <div className="absolute -inset-6 rounded-[40%] bg-primary/20 blur-3xl" />
-        <div className="relative h-full w-full overflow-hidden rounded-md border-[6px] border-card bg-void shadow-2xl" style={{ perspective: "800px" }}>
+    <main className="relative h-full min-h-full overflow-hidden bg-background">
+      {/* Full-screen media behind the squad and lobby controls. */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="relative h-full w-full overflow-hidden bg-void">
           {bg && !bgErr[bg.id] ? (bg.media_type === "video"
             ? <video key={bg.id} src={bg.src} autoPlay muted loop playsInline preload="auto" onError={() => setBgErr((e) => ({ ...e, [bg.id]: true }))} className="h-full w-full object-cover" />
             : <img key={bg.id} src={bg.src} alt="" onError={() => setBgErr((e) => ({ ...e, [bg.id]: true }))} className="h-full w-full object-cover" />)
