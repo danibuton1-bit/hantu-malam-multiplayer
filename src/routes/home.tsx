@@ -13,6 +13,7 @@ import { ModePicker, mapLabel, teamLabel, type ModeChoice } from "@/components/M
 import { botsActive, isTeamMode, teamMax } from "@/lib/team-mode";
 import { MuteButton } from "@/components/MuteButton";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { MailboxDialog } from "@/components/MailboxDialog";
 import { ProfileCorner } from "@/components/ProfileCorner";
 import { Stage3D } from "@/components/Stage3D";
 import { Button } from "@/components/ui/button";
@@ -295,6 +296,7 @@ function Lobby() {
         <div className="flex items-center gap-1 rounded-lg border border-border bg-card/80 px-2 py-2 text-xs"><Users className="size-4 text-primary" />{online.length}</div>
         {isAdmin && <Link to="/admin" className="flex items-center gap-1 rounded-lg border border-gold/70 bg-card/80 px-2 py-2 text-xs font-bold text-gold"><Crown className="size-4" />ADMIN</Link>}
         <SocialPanel {...(code ? { room: code } : {})} />
+        <MailboxDialog />
         {code && <MicButton code={code} me={account.id} />}
         <MuteButton />
         <SettingsDialog />

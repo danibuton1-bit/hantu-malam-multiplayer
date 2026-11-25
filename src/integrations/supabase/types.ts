@@ -322,6 +322,33 @@ export type Database = {
         }
         Relationships: []
       }
+      system_announcements: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          id: string
+          sender_nama: string
+          title: string
+        }
+        Insert: {
+          body: string
+          category?: string
+          created_at?: string
+          id?: string
+          sender_nama?: string
+          title: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          id?: string
+          sender_nama?: string
+          title?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -344,6 +371,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      delete_announcement: {
+        Args: { p_announcement_id: string; p_id: string; p_kode: string }
+        Returns: undefined
       }
       has_password: { Args: { p_id: string; p_kode: string }; Returns: boolean }
       is_admin: { Args: { p_id: string; p_kode: string }; Returns: boolean }
@@ -400,6 +431,29 @@ export type Database = {
         Returns: Json
       }
       me_ok: { Args: { p_id: string; p_kode: string }; Returns: boolean }
+      publish_announcement: {
+        Args: {
+          p_body: string
+          p_category?: string
+          p_id: string
+          p_kode: string
+          p_title: string
+        }
+        Returns: {
+          body: string
+          category: string
+          created_at: string
+          id: string
+          sender_nama: string
+          title: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "system_announcements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       respond_friend: {
         Args: {
           p_accept: boolean
