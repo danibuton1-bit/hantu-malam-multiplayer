@@ -14,7 +14,7 @@ export function Stage3D({ actors, kuyang = false, className, kuyangOnly = false 
   const sig = actors.map((a) => a.key + a.karakter + (a.nama ?? "")).join("|");
 
   useEffect(() => {
-    const host = wrap.current!; const canvas = document.createElement("canvas");
+    const host = wrap.current; if (!host) return; const canvas = document.createElement("canvas");
     canvas.className = "block h-full w-full touch-none"; host.appendChild(canvas);
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(pixelRatioFor(getGfx(), window.devicePixelRatio || 1, window.matchMedia("(pointer: coarse)").matches, false));
@@ -33,7 +33,7 @@ export function Stage3D({ actors, kuyang = false, className, kuyangOnly = false 
     const avs: { a: Avatar; key: string }[] = [];
     if (!kuyangOnly) live.current.forEach((ac, i) => {
       const a = buildAvatar(ac.karakter, (p) => new THREE.MeshStandardMaterial(p), false);
-      a.root.position.x = (i - (n - 1) / 2) * 1.05; a.root.rotation.y = (i - (n - 1) / 2) * -0.18; stage.add(a.root);
+      a.root.position.x = (i - (n - 1) / 2) * 1.05; a.root.rotation.y = Math.PI + (i - (n - 1) / 2) * -0.18; stage.add(a.root);
       if (ac.nama) { const t = nameTag(ac.nama, ac.crown ? "#e8b730" : "#f4efe6"); t.position.set(a.root.position.x, 1.95, 0); stage.add(t); }
       avs.push({ a, key: ac.key });
     });

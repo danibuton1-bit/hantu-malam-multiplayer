@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Refine all four player avatars: human proportions, dimensional faces, articulated elbows/knees and smooth fingers; verify lobby rendering and animation.
 - [x] New characters (Raka, Aisyah, Qila, Nabila), blinking eyes, idle motion
 - [x] Emblem logo
 - [x] World chat (24h), private chat, in-game chat

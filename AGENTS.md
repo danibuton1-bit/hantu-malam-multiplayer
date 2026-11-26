@@ -47,3 +47,5 @@ use the editor.
 - Call `applyMap()` only once per match (inside `useMemo`), never in a component body: it resets `doorOpen`. Why: re-renders were closing open doors.
 - Hotel lift: everyone standing inside the cabin (`liftAt` = whole cabin rect) rides when any client broadcasts `lift`; riders keep their cabin offset via `liftArrive`. Why: friends were left behind in multiplayer.
 - System mailbox announcements live in `system_announcements` (public SELECT + realtime); only admin can publish/delete via SECURITY DEFINER RPCs (`publish_announcement`, `delete_announcement`) checked with `is_admin(id, kode_id)`, while read state is stored per-device in localStorage. Why: no Cloud Auth, and every player gets live red-dot inbox notifications in `/home`.
+
+- Keep player humanoids in the shared `avatar3d` builder with independently articulated elbow/knee groups and batched rigid sibling meshes; this keeps lobby and both game modes consistent without multiplying draw calls for fingers.
